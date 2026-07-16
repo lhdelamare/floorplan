@@ -1,4 +1,5 @@
 require('dotenv').config();
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
@@ -19,7 +20,7 @@ const pool = mysql.createPool({
   queueLimit: 0,
 });
 
-app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
+app.use(cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:5173', credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
 
@@ -212,6 +213,13 @@ app.delete('/api/presets/:id', requireUser, async (req, res) => {
   }
 });
 
-app.listen(port, () => {
-  console.log(`Backend listening on http://localhost:${port}`);
+// Serve static files from the React build
+const distPath = path.join(__dirname, '..', 'dist');
+app.use(express.static(distPath));
+app.get('*', (req, res) => {
+  res.sendFile(path.join(distPath, 'index.html'));
+});
+
+app.listen(port, '0.0.0.0', () => {
+  console.log(`Backend listening on http://0.0.0.0:${port}`);
 });
