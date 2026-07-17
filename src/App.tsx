@@ -21,6 +21,7 @@ import {
   Type,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Sliders,
   Sun,
   Moon,
@@ -259,6 +260,7 @@ export default function App({ user, onLogout }: AppProps) {
   const [savePresetName, setSavePresetName] = useState('');
   const [savePresetScope, setSavePresetScope] = useState<'project' | 'global'>('project');
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const [isArquivoMenuOpen, setIsArquivoMenuOpen] = useState(false);
 
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     return (localStorage.getItem('floorplan_theme') as 'dark' | 'light') || 'dark';
@@ -2963,7 +2965,7 @@ export default function App({ user, onLogout }: AppProps) {
               style={{ padding: '0.35rem 0.6rem', height: '32px', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
             >
               <Plus size={13} />
-              + Novo
+              Novo
             </button>
           </div>
 
@@ -2997,57 +2999,129 @@ export default function App({ user, onLogout }: AppProps) {
         </div>
 
         <div className="header-actions">
-          <button
-            className="btn"
-            onClick={handleNewProject}
-            title="Criar novo projeto em branco"
-          >
-            <Plus size={15} />
-            Novo
-          </button>
-          <button
-            className="btn"
-            onClick={handleOpenProjects}
-            title="Abrir projetos salvos"
-          >
-            <Upload size={15} />
-            Abrir
-          </button>
-          <button
-            className="btn"
-            onClick={handleExportProject}
-            title="Exportar projeto como arquivo JSON"
-          >
-            <Download size={15} />
-            Exportar
-          </button>
-          <label className="btn" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', margin: 0 }} title="Importar projeto de arquivo JSON">
-            <Upload size={15} />
-            Importar
-            <input
-              type="file"
-              accept=".json"
-              onChange={handleImportProject}
-              style={{ display: 'none' }}
-            />
-          </label>
-          <button
-            className="btn btn-primary"
-            onClick={handleSaveProjectManual}
-            title="Salvar projeto no servidor (Ctrl+S / ⌘S)"
-            style={{ fontWeight: '600', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
-          >
-            <Save size={15} />
-            {saveStatus === 'saving' ? 'Salvando...' : saveStatus === 'saved' ? '✓ Salvo!' : 'Salvar'}
-          </button>
-          <button
-            className="btn"
-            onClick={() => { setSaveAsNameInput(project.name + ' (cópia)'); setIsSaveAsModalOpen(true); }}
-            title="Salvar como novo projeto com outro nome"
-          >
-            <SaveAll size={15} />
-            Salvar como
-          </button>
+          <div className="menu-container" style={{ position: 'relative' }}>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => setIsArquivoMenuOpen(!isArquivoMenuOpen)}
+              title="Menu de opções de projeto"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+            >
+              Arquivo
+              <ChevronDown size={14} />
+            </button>
+
+            {isArquivoMenuOpen && (
+              <>
+                <div
+                  style={{ position: 'fixed', inset: 0, zIndex: 998 }}
+                  onClick={() => setIsArquivoMenuOpen(false)}
+                />
+                <div
+                  className="profile-dropdown"
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    marginTop: '0.5rem',
+                    backgroundColor: '#111827',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '0.5rem',
+                    minWidth: '180px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.25rem',
+                    zIndex: 999,
+                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.5)'
+                  }}
+                >
+                  <button
+                    className="btn"
+                    style={{ justifyContent: 'flex-start', padding: '0.45rem 0.75rem', width: '100%', border: 'none', background: 'none' }}
+                    onClick={() => {
+                      setIsArquivoMenuOpen(false);
+                      handleNewProject();
+                    }}
+                  >
+                    <Plus size={14} />
+                    Novo Projeto
+                  </button>
+                  
+                  <button
+                    className="btn"
+                    style={{ justifyContent: 'flex-start', padding: '0.45rem 0.75rem', width: '100%', border: 'none', background: 'none' }}
+                    onClick={() => {
+                      setIsArquivoMenuOpen(false);
+                      handleOpenProjects();
+                    }}
+                  >
+                    <Upload size={14} />
+                    Abrir Projeto
+                  </button>
+
+                  <div style={{ height: '1px', backgroundColor: 'rgba(255,255,255,0.06)', margin: '0.25rem 0' }} />
+
+                  <button
+                    className="btn btn-primary"
+                    style={{ justifyContent: 'flex-start', padding: '0.45rem 0.75rem', width: '100%', border: 'none', fontWeight: '600' }}
+                    onClick={() => {
+                      setIsArquivoMenuOpen(false);
+                      handleSaveProjectManual();
+                    }}
+                  >
+                    <Save size={14} />
+                    {saveStatus === 'saving' ? 'Salvando...' : saveStatus === 'saved' ? '✓ Salvo!' : 'Salvar'}
+                  </button>
+
+                  <button
+                    className="btn"
+                    style={{ justifyContent: 'flex-start', padding: '0.45rem 0.75rem', width: '100%', border: 'none', background: 'none' }}
+                    onClick={() => {
+                      setIsArquivoMenuOpen(false);
+                      setSaveAsNameInput(project.name + ' (cópia)');
+                      setIsSaveAsModalOpen(true);
+                    }}
+                  >
+                    <SaveAll size={14} />
+                    Salvar como…
+                  </button>
+
+                  <div style={{ height: '1px', backgroundColor: 'rgba(255,255,255,0.06)', margin: '0.25rem 0' }} />
+
+                  <label
+                    className="btn"
+                    style={{ justifyContent: 'flex-start', padding: '0.45rem 0.75rem', width: '100%', border: 'none', background: 'none', cursor: 'pointer', margin: 0 }}
+                  >
+                    <Upload size={14} />
+                    Importar JSON
+                    <input
+                      type="file"
+                      accept=".json"
+                      onChange={(e) => {
+                        handleImportProject(e);
+                        setIsArquivoMenuOpen(false);
+                      }}
+                      style={{ display: 'none' }}
+                    />
+                  </label>
+
+                  <button
+                    className="btn"
+                    style={{ justifyContent: 'flex-start', padding: '0.45rem 0.75rem', width: '100%', border: 'none', background: 'none' }}
+                    onClick={() => {
+                      setIsArquivoMenuOpen(false);
+                      handleExportProject();
+                    }}
+                  >
+                    <Download size={14} />
+                    Exportar JSON
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
           <button
             className="btn"
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}

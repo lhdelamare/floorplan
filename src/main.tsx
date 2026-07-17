@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import './index.css';
 import App from './App.tsx';
 import AuthPage from './AuthPage.tsx';
+import UserAdmPage from './UserAdmPage.tsx';
 
 interface User {
   id: number;
@@ -15,6 +16,26 @@ type AuthState = 'checking' | 'authenticated' | 'unauthenticated';
 function Root() {
   const [authState, setAuthState] = useState<AuthState>('checking');
   const [user, setUser] = useState<User | null>(null);
+  const [isAdminRoute, setIsAdminRoute] = useState(() => window.location.pathname === '/useradm');
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setIsAdminRoute(window.location.pathname === '/useradm');
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  if (isAdminRoute) {
+    return (
+      <UserAdmPage
+        onBack={() => {
+          window.history.pushState({}, '', '/');
+          setIsAdminRoute(false);
+        }}
+      />
+    );
+  }
 
   // On mount, check if there's an active session
   useEffect(() => {

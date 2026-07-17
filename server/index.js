@@ -1,5 +1,5 @@
-require('dotenv').config();
 const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
@@ -210,6 +210,36 @@ app.delete('/api/presets/:id', requireUser, async (req, res) => {
   } catch (e) {
     console.error(e);
     res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
+// ─── ADMIN ───────────────────────────────────────────────────────────────────
+
+app.get('/api/admin/users-projects', async (req, res) => {
+  try {
+    const [users] = await pool.query('SELECT id, name, email, created_at FROM users ORDER BY created_at DESC');
+    const [projects] = await pool.query('SELECT id, user_id, name, created_at, updated_at FROM projects ORDER BY updated_at DESC');
+    
+    const projectsByUser = {};
+    projects.forEach(p => {
+      if (!projectsByUser[p.user_id]) {
+        projectsByUser[p.user_id] = [];
+      }
+      projectsByUser[p.user_id].push(p);
+    });
+
+    const data = users.map(u => ({
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      created_at: u.created_at,
+      projects: projectsByUser[u.id] || []
+    }));
+
+    res.json({ success: true, data });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ success: false, error: 'Erro no servidor ao buscar dados dos usuários.' });
   }
 });
 
