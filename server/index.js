@@ -158,6 +158,44 @@ app.delete('/api/projects/:id', requireUser, async (req, res) => {
   }
 });
 
+app.post('/api/projects/:id/share', requireUser, async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ success: false, error: 'E-mail do destinatário em falta' });
+  try {
+    const [users] = await pool.query('SELECT id FROM users WHERE email = ?', [email]);
+    if (!users.length) return res.status(404).json({ success: false, error: 'Usuário com este e-mail não encontrado' });
+    const targetUserId = users[0].id;
+    
+    const [projects] = await pool.query('SELECT name, data FROM projects WHERE id = ? AND user_id = ?', [req.params.id, req.user.id]);
+    if (!projects.length) return res.status(404).json({ success: false, error: 'Projeto não encontrado ou acesso não autorizado' });
+    const { name: originalName, data } = projects[0];
+
+    let targetName = originalName;
+    let collisionIndex = 0;
+    while (true) {
+      const checkName = collisionIndex === 0 ? targetName : `${targetName} (${collisionIndex})`;
+      const [existing] = await pool.query('SELECT id FROM projects WHERE user_id = ? AND name = ?', [targetUserId, checkName]);
+      if (!existing.length) {
+        targetName = checkName;
+        break;
+      }
+      collisionIndex++;
+    }
+
+    const newProjectId = 'proj_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+
+    await pool.query(
+      'INSERT INTO projects (id, user_id, name, data) VALUES (?, ?, ?, ?)',
+      [newProjectId, targetUserId, targetName, data]
+    );
+
+    res.json({ success: true, message: `Projeto compartilhado com sucesso como "${targetName}"` });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ success: false, error: 'Erro no servidor ao compartilhar projeto' });
+  }
+});
+
 // ─── CUSTOM PRESETS ───────────────────────────────────────────────────────────
 
 app.get('/api/presets', requireUser, async (req, res) => {

@@ -755,7 +755,6 @@
   font-weight: 600;
   z-index: 3;
   backdrop-filter: blur(10px);
-  pointer-events: none;
   box-shadow: var(--shadow-md);
 }
 
@@ -936,8 +935,6 @@
   }
   
   .print-page-break {
-    page-break-after: always !important;
-    break-after: page !important;
     padding: 15mm 15mm !important;
     box-sizing: border-box !important;
     width: 100% !important;
@@ -946,6 +943,13 @@
     flex-direction: column !important;
     justify-content: space-between !important;
     background: #ffffff !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .print-page-break:not(:last-child) {
+    page-break-after: always !important;
+    break-after: page !important;
   }
   
   .print-header-brand {
@@ -988,6 +992,8 @@
   .print-single-layout {
     width: 100% !important;
     text-align: center !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
   
   .print-layout-subtitle {
@@ -1006,6 +1012,19 @@
     justify-content: center !important;
     align-items: center !important;
     width: 100% !important;
+  }
+
+  .print-svg-wrapper svg {
+    max-height: 65vh !important;
+    max-width: 100% !important;
+    width: auto !important;
+    height: auto !important;
+    display: block !important;
+  }
+
+  /* When there are multiple layouts on the page, limit their height so both fit on one sheet */
+  .print-layouts-wrapper:has(.print-single-layout:nth-child(2)) .print-svg-wrapper svg {
+    max-height: 30vh !important;
   }
   
   .print-page-footer {

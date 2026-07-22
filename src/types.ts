@@ -31,11 +31,16 @@ export interface LayoutState {
   items: CanvasItem[];
 }
 
+export interface Layout {
+  id: string;
+  name: string;
+  state: LayoutState;
+}
+
 export interface Floor {
   id: string;
   name: string;
-  before: LayoutState;
-  after: LayoutState;
+  layouts: Layout[];
 }
 
 export interface Project {

@@ -28,7 +28,8 @@ import {
   Printer,
   Save,
   Scissors,
-  Clipboard
+  Clipboard,
+  Share2
 } from 'lucide-react';
 import type { Wall, CanvasItem, LayoutState, Project, Floor, EditorTool } from './types';
 import './App.css';
@@ -39,6 +40,7 @@ const CATALOG_ITEMS = [
   { name: 'Porta de Giro', type: 'door', width: 80, depth: 10, color: '#f8fafc', icon: 'door', category: 'basics' },
   { name: 'Porta de Correr', type: 'door', width: 120, depth: 8, color: '#f8fafc', icon: 'door_slide', category: 'basics' },
   { name: 'Janela Blindex', type: 'window', width: 120, depth: 15, color: '#38bdf8', icon: 'window', category: 'basics' },
+  { name: 'Vão Livre (Subtração)', type: 'window', width: 100, depth: 15, color: '#f1f5f9', icon: 'opening', category: 'basics' },
   { name: 'Escada Reta', type: 'furniture', width: 90, depth: 200, color: '#64748b', icon: 'stairs', category: 'basics' },
   { name: 'Escada Caracol / Giratória', type: 'furniture', width: 150, depth: 150, color: '#64748b', icon: 'stairs_spiral', category: 'basics' },
   { name: 'Escada em L (Curva)', type: 'furniture', width: 150, depth: 150, color: '#64748b', icon: 'stairs_l', category: 'basics' },
@@ -64,6 +66,7 @@ const CATALOG_ITEMS = [
 ];
 
 // Blank project used when starting fresh
+// Blank project used when starting fresh
 const makeBlankProject = (): Project => ({
   name: 'Novo Projeto',
   customPresets: [],
@@ -71,8 +74,10 @@ const makeBlankProject = (): Project => ({
     {
       id: 'floor_1',
       name: 'Pavimento Térreo',
-      before: { walls: [], items: [] },
-      after: { walls: [], items: [] }
+      layouts: [
+        { id: 'before', name: 'Layout Atual (Antes)', state: { walls: [], items: [] } },
+        { id: 'after', name: 'Layout Proposto (Depois)', state: { walls: [], items: [] } }
+      ]
     }
   ]
 });
@@ -84,48 +89,94 @@ const DEFAULT_PROJECT: Project = {
     {
       id: 'floor_1',
       name: 'Pavimento Térreo',
-      before: {
-        walls: [
-          { id: 'w1', x1: 100, y1: 100, x2: 700, y2: 100, thickness: 15 },
-          { id: 'w2', x1: 700, y1: 100, x2: 700, y2: 500, thickness: 15 },
-          { id: 'w3', x1: 700, y1: 500, x2: 100, y2: 500, thickness: 15 },
-          { id: 'w4', x1: 100, y1: 500, x2: 100, y2: 100, thickness: 15 }
-        ],
-        items: [
-          { id: 'item1', name: 'Mesa de Reunião', type: 'furniture', x: 400, y: 300, width: 200, depth: 100, rotation: 0, color: '#4f46e5', icon: 'table' },
-          { id: 'item2', name: 'Cadeira A', type: 'furniture', x: 350, y: 230, width: 45, depth: 45, rotation: 180, color: '#3b82f6', icon: 'chair' },
-          { id: 'item3', name: 'Cadeira B', type: 'furniture', x: 450, y: 230, width: 45, depth: 45, rotation: 180, color: '#3b82f6', icon: 'chair' },
-          { id: 'item4', name: 'Cadeira C', type: 'furniture', x: 350, y: 370, width: 45, depth: 45, rotation: 0, color: '#3b82f6', icon: 'chair' },
-          { id: 'item5', name: 'Cadeira D', type: 'furniture', x: 450, y: 370, width: 45, depth: 45, rotation: 0, color: '#3b82f6', icon: 'chair' },
-          { id: 'item6', name: 'Sofá Recepção', type: 'furniture', x: 200, y: 160, width: 140, depth: 80, rotation: 90, color: '#06b6d4', icon: 'sofa' },
-          { id: 'item7', name: 'Porta Entrada', type: 'door', x: 100, y: 440, width: 80, depth: 10, rotation: 90, color: '#f8fafc', icon: 'door' },
-          { id: 'item8', name: 'Recepção', type: 'text', x: 230, y: 300, width: 80, depth: 30, rotation: 0, color: '#94a3b8', icon: 'text', fontSize: 18 }
-        ]
-      },
-      after: {
-        walls: [
-          { id: 'w1', x1: 100, y1: 100, x2: 700, y2: 100, thickness: 15 },
-          { id: 'w2', x1: 700, y1: 100, x2: 700, y2: 500, thickness: 15 },
-          { id: 'w3', x1: 700, y1: 500, x2: 100, y2: 500, thickness: 15 },
-          { id: 'w4', x1: 100, y1: 500, x2: 100, y2: 100, thickness: 15 },
-          { id: 'w_divider', x1: 500, y1: 100, x2: 500, y2: 500, thickness: 10 }
-        ],
-        items: [
-          { id: 'item1', name: 'Mesa de Reunião', type: 'furniture', x: 300, y: 300, width: 160, depth: 100, rotation: 90, color: '#4f46e5', icon: 'table' },
-          { id: 'item2', name: 'Cadeira A', type: 'furniture', x: 230, y: 250, width: 45, depth: 45, rotation: 90, color: '#3b82f6', icon: 'chair' },
-          { id: 'item3', name: 'Cadeira B', type: 'furniture', x: 230, y: 350, width: 45, depth: 45, rotation: 90, color: '#3b82f6', icon: 'chair' },
-          { id: 'item4', name: 'Cadeira C', type: 'furniture', x: 370, y: 250, width: 45, depth: 45, rotation: 270, color: '#3b82f6', icon: 'chair' },
-          { id: 'item5', name: 'Cadeira D', type: 'furniture', x: 370, y: 350, width: 45, depth: 45, rotation: 270, color: '#3b82f6', icon: 'chair' },
-          { id: 'item_new_desk', name: 'Mesa Foco', type: 'furniture', x: 600, y: 250, width: 120, depth: 70, rotation: 0, color: '#8b5cf6', icon: 'table' },
-          { id: 'item_new_chair', name: 'Cadeira Executiva', type: 'furniture', x: 600, y: 310, width: 50, depth: 50, rotation: 0, color: '#3b82f6', icon: 'chair' },
-          { id: 'item7', name: 'Porta Entrada', type: 'door', x: 100, y: 440, width: 80, depth: 10, rotation: 90, color: '#f8fafc', icon: 'door' },
-          { id: 'item_inner_door', name: 'Porta Divisória', type: 'door', x: 500, y: 400, width: 80, depth: 10, rotation: 270, color: '#f8fafc', icon: 'door' },
-          { id: 'item8_a', name: 'Sala Reuniões', type: 'text', x: 300, y: 150, width: 120, depth: 30, rotation: 0, color: '#94a3b8', icon: 'text', fontSize: 16 },
-          { id: 'item8_b', name: 'Diretoria', type: 'text', x: 600, y: 150, width: 100, depth: 30, rotation: 0, color: '#94a3b8', icon: 'text', fontSize: 16 }
-        ]
-      }
+      layouts: [
+        {
+          id: 'before',
+          name: 'Layout Atual (Antes)',
+          state: {
+            walls: [
+              { id: 'w1', x1: 100, y1: 100, x2: 700, y2: 100, thickness: 15 },
+              { id: 'w2', x1: 700, y1: 100, x2: 700, y2: 500, thickness: 15 },
+              { id: 'w3', x1: 700, y1: 500, x2: 100, y2: 500, thickness: 15 },
+              { id: 'w4', x1: 100, y1: 500, x2: 100, y2: 100, thickness: 15 }
+            ],
+            items: [
+              { id: 'item1', name: 'Mesa de Reunião', type: 'furniture', x: 400, y: 300, width: 200, depth: 100, rotation: 0, color: '#4f46e5', icon: 'table' },
+              { id: 'item2', name: 'Cadeira A', type: 'furniture', x: 350, y: 230, width: 45, depth: 45, rotation: 180, color: '#3b82f6', icon: 'chair' },
+              { id: 'item3', name: 'Cadeira B', type: 'furniture', x: 450, y: 230, width: 45, depth: 45, rotation: 180, color: '#3b82f6', icon: 'chair' },
+              { id: 'item4', name: 'Cadeira C', type: 'furniture', x: 350, y: 370, width: 45, depth: 45, rotation: 0, color: '#3b82f6', icon: 'chair' },
+              { id: 'item5', name: 'Cadeira D', type: 'furniture', x: 450, y: 370, width: 45, depth: 45, rotation: 0, color: '#3b82f6', icon: 'chair' },
+              { id: 'item6', name: 'Sofá Recepção', type: 'furniture', x: 200, y: 160, width: 140, depth: 80, rotation: 90, color: '#06b6d4', icon: 'sofa' },
+              { id: 'item7', name: 'Porta Entrada', type: 'door', x: 100, y: 440, width: 80, depth: 10, rotation: 90, color: '#f8fafc', icon: 'door' },
+              { id: 'item8', name: 'Recepção', type: 'text', x: 230, y: 300, width: 80, depth: 30, rotation: 0, color: '#94a3b8', icon: 'text', fontSize: 18 }
+            ]
+          }
+        },
+        {
+          id: 'after',
+          name: 'Layout Proposto (Depois)',
+          state: {
+            walls: [
+              { id: 'w1', x1: 100, y1: 100, x2: 700, y2: 100, thickness: 15 },
+              { id: 'w2', x1: 700, y1: 100, x2: 700, y2: 500, thickness: 15 },
+              { id: 'w3', x1: 700, y1: 500, x2: 100, y2: 500, thickness: 15 },
+              { id: 'w4', x1: 100, y1: 500, x2: 100, y2: 100, thickness: 15 },
+              { id: 'w_divider', x1: 500, y1: 100, x2: 500, y2: 500, thickness: 10 }
+            ],
+            items: [
+              { id: 'item1', name: 'Mesa de Reunião', type: 'furniture', x: 300, y: 300, width: 160, depth: 100, rotation: 90, color: '#4f46e5', icon: 'table' },
+              { id: 'item2', name: 'Cadeira A', type: 'furniture', x: 230, y: 250, width: 45, depth: 45, rotation: 90, color: '#3b82f6', icon: 'chair' },
+              { id: 'item3', name: 'Cadeira B', type: 'furniture', x: 230, y: 350, width: 45, depth: 45, rotation: 90, color: '#3b82f6', icon: 'chair' },
+              { id: 'item4', name: 'Cadeira C', type: 'furniture', x: 370, y: 250, width: 45, depth: 45, rotation: 270, color: '#3b82f6', icon: 'chair' },
+              { id: 'item5', name: 'Cadeira D', type: 'furniture', x: 370, y: 350, width: 45, depth: 45, rotation: 270, color: '#3b82f6', icon: 'chair' },
+              { id: 'item_new_desk', name: 'Mesa Foco', type: 'furniture', x: 600, y: 250, width: 120, depth: 70, rotation: 0, color: '#8b5cf6', icon: 'table' },
+              { id: 'item_new_chair', name: 'Cadeira Executiva', type: 'furniture', x: 600, y: 310, width: 50, depth: 50, rotation: 0, color: '#3b82f6', icon: 'chair' },
+              { id: 'item7', name: 'Porta Entrada', type: 'door', x: 100, y: 440, width: 80, depth: 10, rotation: 90, color: '#f8fafc', icon: 'door' },
+              { id: 'item_inner_door', name: 'Porta Divisória', type: 'door', x: 500, y: 400, width: 80, depth: 10, rotation: 270, color: '#f8fafc', icon: 'door' },
+              { id: 'item8_a', name: 'Sala Reuniões', type: 'text', x: 300, y: 150, width: 120, depth: 30, rotation: 0, color: '#94a3b8', icon: 'text', fontSize: 16 },
+              { id: 'item8_b', name: 'Diretoria', type: 'text', x: 600, y: 150, width: 100, depth: 30, rotation: 0, color: '#94a3b8', icon: 'text', fontSize: 16 }
+            ]
+          }
+        }
+      ]
     }
   ]
+};
+
+const migrateProjectLayouts = (proj: any): Project => {
+  if (!proj) return makeBlankProject();
+  const migratedFloors = (proj.floors || []).map((floor: any) => {
+    if (floor.layouts && floor.layouts.length > 0) {
+      return floor;
+    }
+    if ('before' in floor || 'after' in floor) {
+      const layouts: any[] = [];
+      layouts.push({ id: 'before', name: 'Layout Atual (Antes)', state: floor.before || { walls: [], items: [] } });
+      layouts.push({ id: 'after', name: 'Layout Proposto (Depois)', state: floor.after || { walls: [], items: [] } });
+      const newFloor = { ...floor, layouts };
+      delete newFloor.before;
+      delete newFloor.after;
+      return newFloor;
+    }
+    return {
+      ...floor,
+      layouts: [
+        { id: 'before', name: 'Layout Atual (Antes)', state: floor.state || { walls: [], items: [] } },
+        { id: 'after', name: 'Layout Proposto (Depois)', state: { walls: [], items: [] } }
+      ]
+    };
+  });
+  return {
+    ...proj,
+    floors: migratedFloors.length > 0 ? migratedFloors : [{
+      id: 'floor_1',
+      name: 'Pavimento Térreo',
+      layouts: [
+        { id: 'before', name: 'Layout Atual (Antes)', state: { walls: [], items: [] } },
+        { id: 'after', name: 'Layout Proposto (Depois)', state: { walls: [], items: [] } }
+      ]
+    }]
+  };
 };
 
 interface AppUser { id: number; email: string; name: string; }
@@ -135,7 +186,9 @@ export default function App({ user, onLogout }: AppProps) {
   // --- STATE ---
   const [project, setProject] = useState<Project>(DEFAULT_PROJECT);
   const [currentFloorId, setCurrentFloorId] = useState<string>('floor_1');
-  const [currentVersion, setCurrentVersion] = useState<'before' | 'after'>('after');
+  const [currentLayoutId, setCurrentLayoutId] = useState<string>('before');
+  const [leftSplitLayoutId, setLeftSplitLayoutId] = useState<string>('before');
+  const [rightSplitLayoutId, setRightSplitLayoutId] = useState<string>('after');
   const [tool, setTool] = useState<EditorTool>('select');
   const [zoom, setZoom] = useState(0.8);
   const [pan, setPan] = useState({ x: 150, y: 100 });
@@ -176,6 +229,8 @@ export default function App({ user, onLogout }: AppProps) {
 
   // Wall Drawing state
   const [drawingWallStart, setDrawingWallStart] = useState<{ x: number; y: number } | null>(null);
+  const [currentWallSequenceGroupId, setCurrentWallSequenceGroupId] = useState<string | null>(null);
+  const [wallLengthInput, setWallLengthInput] = useState('');
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
   // Custom furniture form state
@@ -203,6 +258,19 @@ export default function App({ user, onLogout }: AppProps) {
   const [isAddFloorModalOpen, setIsAddFloorModalOpen] = useState(false);
   const [newFloorNameInput, setNewFloorNameInput] = useState('');
   const [copyWallsFromFloorInput, setCopyWallsFromFloorInput] = useState<string>('none');
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [shareEmailInput, setShareEmailInput] = useState('');
+  const [isSharingLoading, setIsSharingLoading] = useState(false);
+  const [isAddNewLayoutModalOpen, setIsAddNewLayoutModalOpen] = useState(false);
+  const [newLayoutNameInput, setNewLayoutNameInput] = useState('');
+  const [newLayoutCopyFromInput, setNewLayoutCopyFromInput] = useState<string>('none');
+  const [isSyncLayoutsModalOpen, setIsSyncLayoutsModalOpen] = useState(false);
+  const [syncSourceLayoutId, setSyncSourceLayoutId] = useState<string>('');
+  const [syncTargetLayoutIds, setSyncTargetLayoutIds] = useState<string[]>([]);
+  const [isRenameLayoutModalOpen, setIsRenameLayoutModalOpen] = useState(false);
+  const [renameLayoutNameInput, setRenameLayoutNameInput] = useState('');
+  const [isRenameFloorModalOpen, setIsRenameFloorModalOpen] = useState(false);
+  const [renameFloorNameInput, setRenameFloorNameInput] = useState('');
   const [isInspectorExpanded, setIsInspectorExpanded] = useState(true);
   const [confirmActionModal, setConfirmActionModal] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
   const [draggedItemsStartPos, setDraggedItemsStartPos] = useState<{ [itemId: string]: { x: number; y: number } }>({});
@@ -283,7 +351,8 @@ export default function App({ user, onLogout }: AppProps) {
   const [printBothOrder, setPrintBothOrder] = useState<'sequence' | 'grouped'>('sequence');
 
   // Clipboard for Copy / Cut / Paste
-  const [clipboard, setClipboard] = useState<CanvasItem[]>([]);
+  const [clipboard, setClipboard] = useState<{ items: CanvasItem[]; walls: Wall[] }>({ items: [], walls: [] });
+  const [isPastingMode, setIsPastingMode] = useState(false);
 
   useEffect(() => {
     if (isPrintModalOpen && printSelectedFloorIds.length === 0 && currentFloorId) {
@@ -291,13 +360,23 @@ export default function App({ user, onLogout }: AppProps) {
     }
   }, [isPrintModalOpen, currentFloorId]);
 
+  useEffect(() => {
+    if (tool !== 'wall') {
+      setDrawingWallStart(null);
+      setCurrentWallSequenceGroupId(null);
+      setWallLengthInput('');
+    }
+  }, [tool]);
+
   const svgRef1 = useRef<SVGSVGElement | null>(null);
   const svgRef2 = useRef<SVGSVGElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const lastSelectedIdRef = useRef<string | null>(null);
+  const lastSelectedWallIdRef = useRef<string | null>(null);
 
   // Current floor & layout selector helper
   const currentFloor = project.floors.find(f => f.id === currentFloorId) || project.floors[0] || DEFAULT_PROJECT.floors[0];
-  const currentLayout = currentVersion === 'before' ? currentFloor.before : currentFloor.after;
+  const currentLayout = currentFloor.layouts?.find(l => l.id === currentLayoutId)?.state || currentFloor.layouts?.[0]?.state || { walls: [], items: [] };
 
   // --- INIT: always start with a blank project ---
   useEffect(() => {
@@ -316,6 +395,66 @@ export default function App({ user, onLogout }: AppProps) {
         document.activeElement?.tagName === 'TEXTAREA'
       ) {
         return;
+      }
+
+      // If drawing wall and typing numbers
+      if (tool === 'wall' && drawingWallStart) {
+        if (/^[0-9.,]$/.test(e.key)) {
+          e.preventDefault();
+          setWallLengthInput(prev => prev + (e.key === ',' ? '.' : e.key));
+          return;
+        }
+        if (e.key === 'Backspace' && wallLengthInput.length > 0) {
+          e.preventDefault();
+          setWallLengthInput(prev => prev.slice(0, -1));
+          return;
+        }
+        if (e.key === 'Escape' && wallLengthInput.length > 0) {
+          e.preventDefault();
+          setWallLengthInput('');
+          return;
+        }
+        if (e.key === 'Enter' && wallLengthInput.length > 0) {
+          e.preventDefault();
+          const typedLenM = parseFloat(wallLengthInput);
+          if (!isNaN(typedLenM) && typedLenM > 0) {
+            const typedLenCm = typedLenM * 100;
+            const dx = mousePos.x - drawingWallStart.x;
+            const dy = mousePos.y - drawingWallStart.y;
+            const dist = Math.hypot(dx, dy);
+
+            let endX = drawingWallStart.x;
+            let endY = drawingWallStart.y;
+
+            if (dist > 0) {
+              const ux = dx / dist;
+              const uy = dy / dist;
+              endX = snapValue(drawingWallStart.x + ux * typedLenCm);
+              endY = snapValue(drawingWallStart.y + uy * typedLenCm);
+            } else {
+              endX = snapValue(drawingWallStart.x + typedLenCm);
+            }
+
+            const newWall: Wall = {
+              id: 'wall_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+              x1: drawingWallStart.x,
+              y1: drawingWallStart.y,
+              x2: endX,
+              y2: endY,
+              thickness: 15,
+              curve: 0,
+              groupId: currentWallSequenceGroupId || undefined
+            };
+
+            updateCurrentLayout({
+              ...currentLayout,
+              walls: [...currentLayout.walls, newWall]
+            });
+            setDrawingWallStart({ x: endX, y: endY });
+          }
+          setWallLengthInput('');
+          return;
+        }
       }
 
       const isCmdOrCtrl = e.metaKey || e.ctrlKey;
@@ -375,6 +514,28 @@ export default function App({ user, onLogout }: AppProps) {
         return;
       }
 
+      // Group selection (Ctrl/Cmd + G)
+      if (isCmdOrCtrl && e.key.toLowerCase() === 'g') {
+        e.preventDefault();
+        if (selectedItemIds.length > 1) {
+          handleGroupSelectedItems();
+        } else if (selectedWallIds.length > 1) {
+          handleGroupSelectedWalls();
+        }
+        return;
+      }
+
+      // Ungroup selection (Ctrl/Cmd + U)
+      if (isCmdOrCtrl && e.key.toLowerCase() === 'u') {
+        e.preventDefault();
+        if (selectedItemIds.length > 0) {
+          handleUngroupSelectedItems();
+        } else if (selectedWallIds.length > 0) {
+          handleUngroupSelectedWalls();
+        }
+        return;
+      }
+
       // Delete Selection
       if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault();
@@ -390,9 +551,12 @@ export default function App({ user, onLogout }: AppProps) {
         return;
       }
 
-      // Escape key (Cancel drawing / select tool)
+      // Escape key (Cancel drawing / select tool / cancel paste)
       if (e.key === 'Escape') {
         e.preventDefault();
+        if (isPastingMode) {
+          setIsPastingMode(false);
+        }
         setDrawingWallStart(null);
         setTool('select');
       }
@@ -405,11 +569,17 @@ export default function App({ user, onLogout }: AppProps) {
     selectedWallId,
     selectedWallIds,
     project,
-    currentVersion,
+    currentLayoutId,
     currentFloorId,
     historyIndex,
     history,
-    clipboard
+    clipboard,
+    isPastingMode,
+    tool,
+    drawingWallStart,
+    wallLengthInput,
+    mousePos,
+    currentWallSequenceGroupId
   ]);
 
   // Sync selection local input text properties
@@ -418,28 +588,57 @@ export default function App({ user, onLogout }: AppProps) {
 
   useEffect(() => {
     if (selectedItem) {
-      if (focusedInput !== 'name') setLocalNameText(selectedItem.name);
-      if (focusedInput !== 'width') setLocalWidthText(selectedItem.width.toString());
-      if (focusedInput !== 'depth') setLocalDepthText(selectedItem.depth.toString());
-      if (focusedInput !== 'rotation') setLocalRotationText(selectedItem.rotation.toString());
-      if (focusedInput !== 'fontSize') setLocalTextFontSize((selectedItem.fontSize || 16).toString());
+      const idChanged = lastSelectedIdRef.current !== selectedItemId;
+      if (idChanged) {
+        setLocalNameText(selectedItem.name);
+        setLocalWidthText(selectedItem.width.toString());
+        setLocalDepthText(selectedItem.depth.toString());
+        setLocalRotationText(selectedItem.rotation.toString());
+        setLocalTextFontSize((selectedItem.fontSize || 16).toString());
+        setFocusedInput(null);
+        lastSelectedIdRef.current = selectedItemId;
+      } else {
+        if (focusedInput !== 'name') setLocalNameText(selectedItem.name);
+        if (focusedInput !== 'width') setLocalWidthText(selectedItem.width.toString());
+        if (focusedInput !== 'depth') setLocalDepthText(selectedItem.depth.toString());
+        if (focusedInput !== 'rotation') setLocalRotationText(selectedItem.rotation.toString());
+        if (focusedInput !== 'fontSize') setLocalTextFontSize((selectedItem.fontSize || 16).toString());
+      }
+    } else {
+      lastSelectedIdRef.current = null;
     }
   }, [selectedItemId, selectedItem, focusedInput]);
 
   useEffect(() => {
     if (selectedWall) {
-      if (focusedInput !== 'thickness') setLocalThicknessText(selectedWall.thickness.toString());
-      const dx = selectedWall.x2 - selectedWall.x1;
-      const dy = selectedWall.y2 - selectedWall.y1;
-      if (focusedInput !== 'length') {
+      const idChanged = lastSelectedWallIdRef.current !== selectedWallId;
+      if (idChanged) {
+        setLocalThicknessText(selectedWall.thickness.toString());
+        const dx = selectedWall.x2 - selectedWall.x1;
+        const dy = selectedWall.y2 - selectedWall.y1;
         const chordLen = Math.hypot(dx, dy);
         setLocalLengthText((chordLen / 100).toFixed(2));
-      }
-      if (focusedInput !== 'wallAngle') {
         let angleDeg = Math.atan2(dy, dx) * 180 / Math.PI;
         if (angleDeg < 0) angleDeg += 360;
         setLocalWallAngleText(Math.round(angleDeg).toString());
+        setFocusedInput(null);
+        lastSelectedWallIdRef.current = selectedWallId;
+      } else {
+        if (focusedInput !== 'thickness') setLocalThicknessText(selectedWall.thickness.toString());
+        const dx = selectedWall.x2 - selectedWall.x1;
+        const dy = selectedWall.y2 - selectedWall.y1;
+        if (focusedInput !== 'length') {
+          const chordLen = Math.hypot(dx, dy);
+          setLocalLengthText((chordLen / 100).toFixed(2));
+        }
+        if (focusedInput !== 'wallAngle') {
+          let angleDeg = Math.atan2(dy, dx) * 180 / Math.PI;
+          if (angleDeg < 0) angleDeg += 360;
+          setLocalWallAngleText(Math.round(angleDeg).toString());
+        }
       }
+    } else {
+      lastSelectedWallIdRef.current = null;
     }
   }, [selectedWallId, selectedWall, focusedInput]);
 
@@ -461,6 +660,25 @@ export default function App({ user, onLogout }: AppProps) {
       setSelectedItemIds(relatedIds);
     }
   }, [selectedItemId]);
+
+  useEffect(() => {
+    if (!selectedWallId) {
+      setSelectedWallIds([]);
+    } else if (selectedWallId && !selectedWallIds.includes(selectedWallId)) {
+      const relatedIds: string[] = [];
+      const primaryWall = currentLayout.walls.find(w => w.id === selectedWallId);
+      if (primaryWall && primaryWall.groupId) {
+        currentLayout.walls.forEach(w => {
+          if (w.groupId === primaryWall.groupId) {
+            relatedIds.push(w.id);
+          }
+        });
+      } else {
+        relatedIds.push(selectedWallId);
+      }
+      setSelectedWallIds(relatedIds);
+    }
+  }, [selectedWallId]);
 
   useEffect(() => {
     setSelectedItemId(null);
@@ -517,7 +735,7 @@ export default function App({ user, onLogout }: AppProps) {
   };
 
   const handleUngroupItem = (itemId: string) => {
-    const layout = currentVersion === 'before' ? currentFloor.before : currentFloor.after;
+    const layout = currentLayout;
     const item = layout.items.find(it => it.id === itemId);
     if (!item || !item.groupId) return;
     
@@ -578,7 +796,7 @@ export default function App({ user, onLogout }: AppProps) {
   };
 
   const handleUngroupWall = (wallId: string) => {
-    const layout = currentVersion === 'before' ? currentFloor.before : currentFloor.after;
+    const layout = currentLayout;
     const wall = layout.walls.find(w => w.id === wallId);
     if (!wall || !wall.groupId) return;
     
@@ -615,7 +833,12 @@ export default function App({ user, onLogout }: AppProps) {
       if (floor.id === currentFloorId) {
         return {
           ...floor,
-          [currentVersion]: updatedLayout
+          layouts: (floor.layouts || []).map(l => {
+            if (l.id === currentLayoutId) {
+              return { ...l, state: updatedLayout };
+            }
+            return l;
+          })
         };
       }
       return floor;
@@ -712,16 +935,20 @@ export default function App({ user, onLogout }: AppProps) {
     if (copyWallsFromFloorInput !== 'none') {
       const sourceFloor = project.floors.find(f => f.id === copyWallsFromFloorInput);
       if (sourceFloor) {
-        baseBefore.walls = JSON.parse(JSON.stringify(sourceFloor.before.walls));
-        baseAfter.walls = JSON.parse(JSON.stringify(sourceFloor.after.walls));
+        const sourceBefore = sourceFloor.layouts?.find(l => l.id === 'before')?.state || sourceFloor.layouts?.[0]?.state;
+        const sourceAfter = sourceFloor.layouts?.find(l => l.id === 'after')?.state || sourceFloor.layouts?.[1]?.state || sourceFloor.layouts?.[0]?.state;
+        if (sourceBefore) baseBefore.walls = JSON.parse(JSON.stringify(sourceBefore.walls));
+        if (sourceAfter) baseAfter.walls = JSON.parse(JSON.stringify(sourceAfter.walls));
       }
     }
 
     const newFloor: Floor = {
       id: newFloorId,
       name: trimmedName,
-      before: baseBefore,
-      after: baseAfter
+      layouts: [
+        { id: 'before', name: 'Layout Atual (Antes)', state: baseBefore },
+        { id: 'after', name: 'Layout Proposto (Depois)', state: baseAfter }
+      ]
     };
 
     commitProjectChange({
@@ -759,10 +986,220 @@ export default function App({ user, onLogout }: AppProps) {
     });
   };
 
+  // --- LAYOUT ACTIONS ---
+  const handleAddNewLayout = () => {
+    setNewLayoutNameInput(`Proposta ${(currentFloor.layouts || []).length + 1}`);
+    setNewLayoutCopyFromInput('none');
+    setIsAddNewLayoutModalOpen(true);
+  };
+
+  const handleAddNewLayoutConfirmed = () => {
+    const name = newLayoutNameInput.trim();
+    if (!name) {
+      alert('Por favor, digite um nome para o layout.');
+      return;
+    }
+
+    const newLayoutId = 'layout_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+    let newLayoutState: LayoutState = { walls: [], items: [] };
+
+    if (newLayoutCopyFromInput !== 'none') {
+      const sourceLayout = currentFloor.layouts?.find(l => l.id === newLayoutCopyFromInput);
+      if (sourceLayout) {
+        newLayoutState = JSON.parse(JSON.stringify(sourceLayout.state));
+      }
+    }
+
+    const updatedFloors = project.floors.map(floor => {
+      if (floor.id === currentFloorId) {
+        return {
+          ...floor,
+          layouts: [
+            ...(floor.layouts || []),
+            { id: newLayoutId, name, state: newLayoutState }
+          ]
+        };
+      }
+      return floor;
+    });
+
+    const updatedProj = { ...project, floors: updatedFloors };
+    commitProjectChange(updatedProj);
+    setCurrentLayoutId(newLayoutId);
+    setIsAddNewLayoutModalOpen(false);
+  };
+
+  const handleSyncLayouts = () => {
+    if ((currentFloor.layouts || []).length < 2) {
+      alert('É necessário ter pelo menos 2 layouts para sincronizar.');
+      return;
+    }
+    const defaultSource = currentFloor.layouts?.[0]?.id || '';
+    setSyncSourceLayoutId(defaultSource);
+    setSyncTargetLayoutIds([]);
+    setIsSyncLayoutsModalOpen(true);
+  };
+
+  const handleSyncLayoutsConfirmed = () => {
+    if (!syncSourceLayoutId) {
+      alert('Por favor, escolha o layout de origem (Copiar De).');
+      return;
+    }
+    if (syncTargetLayoutIds.length === 0) {
+      alert('Por favor, selecione pelo menos um layout de destino (Copiar Para).');
+      return;
+    }
+
+    const sourceLayout = currentFloor.layouts?.find(l => l.id === syncSourceLayoutId);
+    if (!sourceLayout) return;
+
+    let hasContent = false;
+    syncTargetLayoutIds.forEach(tid => {
+      const target = currentFloor.layouts?.find(l => l.id === tid);
+      if (target && (target.state.walls.length > 0 || target.state.items.length > 0)) {
+        hasContent = true;
+      }
+    });
+
+    if (hasContent) {
+      const proceed = confirm('Atenção: Um ou mais layouts de destino contêm conteúdo. O que estiver lá será totalmente substituído e perdido. Deseja continuar?');
+      if (!proceed) return;
+    }
+
+    const updatedFloors = project.floors.map(floor => {
+      if (floor.id === currentFloorId) {
+        return {
+          ...floor,
+          layouts: (floor.layouts || []).map(l => {
+            if (syncTargetLayoutIds.includes(l.id)) {
+              return {
+                ...l,
+                state: JSON.parse(JSON.stringify(sourceLayout.state))
+              };
+            }
+            return l;
+          })
+        };
+      }
+      return floor;
+    });
+
+    commitProjectChange({ ...project, floors: updatedFloors });
+    setIsSyncLayoutsModalOpen(false);
+    alert('Layouts sincronizados com sucesso!');
+  };
+
+  const handleRenameCurrentLayout = () => {
+    const activeLayout = currentFloor.layouts?.find(l => l.id === currentLayoutId);
+    if (!activeLayout) return;
+    setRenameLayoutNameInput(activeLayout.name);
+    setIsRenameLayoutModalOpen(true);
+  };
+
+  const handleRenameCurrentLayoutConfirmed = () => {
+    const newName = renameLayoutNameInput.trim();
+    if (!newName) {
+      alert('Por favor, digite um nome para o layout.');
+      return;
+    }
+
+    const updatedFloors = project.floors.map(floor => {
+      if (floor.id === currentFloorId) {
+        return {
+          ...floor,
+          layouts: (floor.layouts || []).map(l => {
+            if (l.id === currentLayoutId) {
+              return { ...l, name: newName };
+            }
+            return l;
+          })
+        };
+      }
+      return floor;
+    });
+
+    commitProjectChange({ ...project, floors: updatedFloors });
+    setIsRenameLayoutModalOpen(false);
+  };
+
+  const handleRenameCurrentFloor = () => {
+    setRenameFloorNameInput(currentFloor.name);
+    setIsRenameFloorModalOpen(true);
+  };
+
+  const handleRenameCurrentFloorConfirmed = () => {
+    const newName = renameFloorNameInput.trim();
+    if (!newName) {
+      alert('Por favor, digite um nome para o andar.');
+      return;
+    }
+
+    const updatedFloors = project.floors.map(floor => {
+      if (floor.id === currentFloorId) {
+        return {
+          ...floor,
+          name: newName
+        };
+      }
+      return floor;
+    });
+
+    commitProjectChange({ ...project, floors: updatedFloors });
+    setIsRenameFloorModalOpen(false);
+  };
+
+  const handleDeleteCurrentLayout = () => {
+    if ((currentFloor.layouts || []).length <= 1) {
+      alert('Não é possível excluir o único layout deste pavimento.');
+      return;
+    }
+
+    const activeLayout = currentFloor.layouts?.find(l => l.id === currentLayoutId);
+    if (!activeLayout) return;
+
+    if (!confirm(`Tem certeza de que deseja excluir o layout "${activeLayout.name}"? Esta ação não pode ser desfeita.`)) {
+      return;
+    }
+
+    const updatedLayouts = (currentFloor.layouts || []).filter(l => l.id !== currentLayoutId);
+    const nextActiveId = updatedLayouts[0]?.id || '';
+
+    const updatedFloors = project.floors.map(floor => {
+      if (floor.id === currentFloorId) {
+        return {
+          ...floor,
+          layouts: updatedLayouts
+        };
+      }
+      return floor;
+    });
+
+    commitProjectChange({ ...project, floors: updatedFloors });
+    setCurrentLayoutId(nextActiveId);
+  };
+
   // --- MATH HELPERS ---
   const snapValue = (val: number) => {
     if (!snapToGrid) return val;
     return Math.round(val / snapSize) * snapSize;
+  };
+
+  const getSnappedWallEndpoint = (x: number, y: number, tolerance = 15) => {
+    let closestPt = { x: snapValue(x), y: snapValue(y), snapped: false };
+    let minDistance = tolerance;
+    currentLayout.walls.forEach(wall => {
+      const d1 = getDistance(x, y, wall.x1, wall.y1);
+      if (d1 < minDistance) {
+        minDistance = d1;
+        closestPt = { x: wall.x1, y: wall.y1, snapped: true };
+      }
+      const d2 = getDistance(x, y, wall.x2, wall.y2);
+      if (d2 < minDistance) {
+        minDistance = d2;
+        closestPt = { x: wall.x2, y: wall.y2, snapped: true };
+      }
+    });
+    return closestPt;
   };
 
   const getCanvasCoords = (clientX: number, clientY: number, currentSvg: SVGSVGElement | null) => {
@@ -814,7 +1251,7 @@ export default function App({ user, onLogout }: AppProps) {
 
   // --- CLONE & CUSTOM BUILDING ---
   const handleCloneItem = (itemId: string) => {
-    const layout = currentVersion === 'before' ? currentFloor.before : currentFloor.after;
+    const layout = currentLayout;
     const sourceItem = layout.items.find(it => it.id === itemId);
     if (!sourceItem) return;
 
@@ -875,6 +1312,8 @@ export default function App({ user, onLogout }: AppProps) {
 
   const handleCopyItems = () => {
     const itemsToCopy: CanvasItem[] = [];
+    const wallsToCopy: Wall[] = [];
+
     if (selectedItemIds.length > 0) {
       currentLayout.items.forEach(item => {
         if (selectedItemIds.includes(item.id)) {
@@ -887,78 +1326,80 @@ export default function App({ user, onLogout }: AppProps) {
         itemsToCopy.push({ ...item });
       }
     }
+
+    if (selectedWallIds.length > 0) {
+      currentLayout.walls.forEach(wall => {
+        if (selectedWallIds.includes(wall.id)) {
+          wallsToCopy.push({ ...wall });
+        }
+      });
+    } else if (selectedWallId) {
+      const wall = currentLayout.walls.find(w => w.id === selectedWallId);
+      if (wall) {
+        wallsToCopy.push({ ...wall });
+      }
+    }
     
-    if (itemsToCopy.length > 0) {
-      setClipboard(itemsToCopy);
+    if (itemsToCopy.length > 0 || wallsToCopy.length > 0) {
+      setClipboard({ items: itemsToCopy, walls: wallsToCopy });
     }
   };
 
   const handleCutItems = () => {
     const itemsToCut: CanvasItem[] = [];
-    const idsToCut: string[] = [];
+    const wallsToCut: Wall[] = [];
+    const itemIdsToCut: string[] = [];
+    const wallIdsToCut: string[] = [];
     
     if (selectedItemIds.length > 0) {
       currentLayout.items.forEach(item => {
         if (selectedItemIds.includes(item.id)) {
           itemsToCut.push({ ...item });
-          idsToCut.push(item.id);
+          itemIdsToCut.push(item.id);
         }
       });
     } else if (selectedItemId) {
       const item = currentLayout.items.find(i => i.id === selectedItemId);
       if (item) {
         itemsToCut.push({ ...item });
-        idsToCut.push(item.id);
+        itemIdsToCut.push(item.id);
       }
     }
 
-    if (itemsToCut.length > 0) {
-      setClipboard(itemsToCut);
+    if (selectedWallIds.length > 0) {
+      currentLayout.walls.forEach(wall => {
+        if (selectedWallIds.includes(wall.id)) {
+          wallsToCut.push({ ...wall });
+          wallIdsToCut.push(wall.id);
+        }
+      });
+    } else if (selectedWallId) {
+      const wall = currentLayout.walls.find(w => w.id === selectedWallId);
+      if (wall) {
+        wallsToCut.push({ ...wall });
+        wallIdsToCut.push(wall.id);
+      }
+    }
+
+    if (itemsToCut.length > 0 || wallsToCut.length > 0) {
+      setClipboard({ items: itemsToCut, walls: wallsToCut });
       
       const updatedLayout: LayoutState = {
         ...currentLayout,
-        items: currentLayout.items.filter(item => !idsToCut.includes(item.id))
+        items: currentLayout.items.filter(item => !itemIdsToCut.includes(item.id)),
+        walls: currentLayout.walls.filter(wall => !wallIdsToCut.includes(wall.id))
       };
       updateCurrentLayout(updatedLayout);
       setSelectedItemId(null);
       setSelectedItemIds([]);
+      setSelectedWallId(null);
+      setSelectedWallIds([]);
     }
   };
 
   const handlePasteItems = () => {
-    if (clipboard.length === 0) return;
-    
-    const pastedItems: CanvasItem[] = clipboard.map(item => {
-      const newId = 'item_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
-      const isSameFloor = currentLayout.items.some(i => i.id === item.id);
-      const offset = isSameFloor ? 30 : 0;
-      
-      const newItem: CanvasItem = {
-        ...item,
-        id: newId,
-        x: item.x + offset,
-        y: item.y + offset
-      };
-      if (newItem.groupId) {
-        delete newItem.groupId;
-      }
-      return newItem;
-    });
-
-    const updatedLayout: LayoutState = {
-      ...currentLayout,
-      items: [...currentLayout.items, ...pastedItems]
-    };
-    updateCurrentLayout(updatedLayout);
-    
-    if (pastedItems.length === 1) {
-      setSelectedItemId(pastedItems[0].id);
-      setSelectedItemIds([pastedItems[0].id]);
-    } else {
-      setSelectedItemId(null);
-      setSelectedItemIds(pastedItems.map(i => i.id));
-    }
-    setSelectedWallId(null);
+    if (clipboard.items.length === 0 && clipboard.walls.length === 0) return;
+    setIsPastingMode(true);
     setTool('select');
   };
 
@@ -994,15 +1435,20 @@ export default function App({ user, onLogout }: AppProps) {
     // 2. Compute updated floors layout containing the new item
     const updatedFloors = project.floors.map(floor => {
       if (floor.id === currentFloorId) {
-        const layoutToUpdate = currentVersion === 'before' ? floor.before : floor.after;
-        const updatedLayout = {
-          ...layoutToUpdate,
-          items: [...layoutToUpdate.items, newItem]
-        };
         return {
           ...floor,
-          before: currentVersion === 'before' ? updatedLayout : floor.before,
-          after: currentVersion === 'after' ? updatedLayout : floor.after
+          layouts: (floor.layouts || []).map(l => {
+            if (l.id === currentLayoutId) {
+              return {
+                ...l,
+                state: {
+                  ...l.state,
+                  items: [...l.state.items, newItem]
+                }
+              };
+            }
+            return l;
+          })
         };
       }
       return floor;
@@ -1247,6 +1693,40 @@ export default function App({ user, onLogout }: AppProps) {
     setTimeout(() => setSaveStatus('idle'), 1500);
   };
 
+  const handleShareProjectConfirmed = async () => {
+    const email = shareEmailInput.trim();
+    if (!email) {
+      alert('Por favor, insira o e-mail do destinatário.');
+      return;
+    }
+    if (!projectId) {
+      alert('Por favor, salve o projeto antes de compartilhar!');
+      return;
+    }
+
+    setIsSharingLoading(true);
+    try {
+      const res = await fetch(`/api/projects/${projectId}/share`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message || 'Projeto compartilhado com sucesso!');
+        setIsShareModalOpen(false);
+      } else {
+        alert(data.error || 'Erro ao compartilhar projeto.');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Erro de conexão com o servidor.');
+    } finally {
+      setIsSharingLoading(false);
+    }
+  };
+
   const handleSaveAs = async (newName: string) => {
     const newId = 'proj_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
     const newProject = { ...project, name: newName };
@@ -1286,7 +1766,11 @@ export default function App({ user, onLogout }: AppProps) {
         setSelectedItemId(null);
         setSelectedWallId(null);
         setCurrentFloorId('floor_1');
-        setCurrentVersion('after');
+        setCurrentLayoutId('before');
+        setLeftSplitLayoutId('before');
+        setRightSplitLayoutId('after');
+        setConfirmActionModal(null);
+        setIsProjectsModalOpen(false);
       }
     });
   };
@@ -1310,25 +1794,35 @@ export default function App({ user, onLogout }: AppProps) {
       const json = await res.json();
       if (!json.success) { alert('Erro ao abrir projeto.'); return; }
       const loaded: Project = JSON.parse(json.data.data);
-      // Migration
+      let migrated: Project;
       if (loaded && !loaded.floors) {
-        const migrated: Project = {
+        migrated = {
           name: loaded.name || 'Projeto',
           customPresets: [],
           floors: [{ id: 'floor_1', name: 'Pavimento Térreo', before: (loaded as any).before || {walls:[],items:[]}, after: (loaded as any).after || {walls:[],items:[]} }]
         };
-        setProject(migrated);
-        setHistory([migrated]);
       } else {
-        setProject(loaded);
-        setHistory([loaded]);
+        migrated = loaded;
+      }
+      const migratedLayouts = migrateProjectLayouts(migrated);
+      setProject(migratedLayouts);
+      setHistory([migratedLayouts]);
+      setHistoryIndex(0);
+      const firstFloor = migratedLayouts.floors[0];
+      if (firstFloor && firstFloor.layouts && firstFloor.layouts.length > 0) {
+        setCurrentLayoutId(firstFloor.layouts[0].id);
+        setLeftSplitLayoutId(firstFloor.layouts[0].id);
+        setRightSplitLayoutId(firstFloor.layouts[1]?.id || firstFloor.layouts[0].id);
+      } else {
+        setCurrentLayoutId('before');
+        setLeftSplitLayoutId('before');
+        setRightSplitLayoutId('after');
       }
       setProjectId(pid);
       setHistoryIndex(0);
       setSelectedItemId(null);
       setSelectedWallId(null);
-      setCurrentFloorId('floor_1');
-      setCurrentVersion('after');
+      setCurrentFloorId(firstFloor ? firstFloor.id : 'floor_1');
       setIsProjectsModalOpen(false);
     } catch (e) {
       alert('Erro ao carregar projeto.');
@@ -1491,9 +1985,9 @@ export default function App({ user, onLogout }: AppProps) {
         try {
           const parsed = JSON.parse(event.target?.result as string);
           if (parsed && (parsed.floors || parsed.before)) {
-            // Run migration if importing older format
+            let migrated: Project;
             if (parsed && !parsed.floors) {
-              const migrated: Project = {
+              migrated = {
                 name: parsed.name || 'Projeto Importado',
                 floors: [
                   {
@@ -1504,9 +1998,16 @@ export default function App({ user, onLogout }: AppProps) {
                   }
                 ]
               };
-              commitProjectChange(migrated);
             } else {
-              commitProjectChange(parsed);
+              migrated = parsed;
+            }
+            const migratedLayouts = migrateProjectLayouts(migrated);
+            commitProjectChange(migratedLayouts);
+            const firstFloor = migratedLayouts.floors[0];
+            if (firstFloor && firstFloor.layouts && firstFloor.layouts.length > 0) {
+              setCurrentLayoutId(firstFloor.layouts[0].id);
+              setLeftSplitLayoutId(firstFloor.layouts[0].id);
+              setRightSplitLayoutId(firstFloor.layouts[1]?.id || firstFloor.layouts[0].id);
             }
             alert('Projeto carregado com sucesso!');
           } else {
@@ -1527,6 +2028,79 @@ export default function App({ user, onLogout }: AppProps) {
       y: snapValue(coords.y)
     };
 
+    if (isPastingMode) {
+      e.stopPropagation();
+      e.preventDefault();
+      if (e.button === 2) {
+        setIsPastingMode(false);
+        return;
+      }
+      
+      const xs: number[] = [];
+      const ys: number[] = [];
+      clipboard.items.forEach(item => {
+        xs.push(item.x - item.width/2, item.x + item.width/2);
+        ys.push(item.y - item.depth/2, item.y + item.depth/2);
+      });
+      clipboard.walls.forEach(w => {
+        xs.push(w.x1, w.x2);
+        ys.push(w.y1, w.y2);
+      });
+      
+      if (xs.length > 0 && ys.length > 0) {
+        const minX = Math.min(...xs);
+        const maxX = Math.max(...xs);
+        const minY = Math.min(...ys);
+        const maxY = Math.max(...ys);
+        const centerX = (minX + maxX) / 2;
+        const centerY = (minY + maxY) / 2;
+        
+        const deltaX = snapped.x - centerX;
+        const deltaY = snapped.y - centerY;
+        
+        const newItemGroupId = 'group_paste_' + Date.now();
+        const pastedItems: CanvasItem[] = clipboard.items.map(item => {
+          const newId = 'item_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+          return {
+            ...item,
+            id: newId,
+            x: snapValue(item.x + deltaX),
+            y: snapValue(item.y + deltaY),
+            groupId: newItemGroupId
+          };
+        });
+        
+        const newWallGroupId = 'group_wall_paste_' + Date.now();
+        const pastedWalls: Wall[] = clipboard.walls.map(wall => {
+          const newId = 'wall_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+          return {
+            ...wall,
+            id: newId,
+            x1: snapValue(wall.x1 + deltaX),
+            y1: snapValue(wall.y1 + deltaY),
+            x2: snapValue(wall.x2 + deltaX),
+            y2: snapValue(wall.y2 + deltaY),
+            groupId: newWallGroupId
+          };
+        });
+        
+        const updatedLayout: LayoutState = {
+          ...currentLayout,
+          items: [...currentLayout.items, ...pastedItems],
+          walls: [...currentLayout.walls, ...pastedWalls]
+        };
+        updateCurrentLayout(updatedLayout);
+        
+        setSelectedItemIds(pastedItems.map(i => i.id));
+        setSelectedItemId(pastedItems.length > 0 ? pastedItems[0].id : null);
+        setSelectedWallIds(pastedWalls.map(w => w.id));
+        setSelectedWallId(pastedWalls.length > 0 ? pastedWalls[0].id : null);
+      }
+      
+      setIsPastingMode(false);
+      return;
+    }
+
     const isBackground = e.target === targetSvg || (e.target as SVGElement).id === 'grid-background';
     
     // Pan tool OR middle mouse button OR select+alt
@@ -1540,13 +2114,17 @@ export default function App({ user, onLogout }: AppProps) {
     }
 
     if (tool === 'wall') {
+      const snapResult = getSnappedWallEndpoint(coords.x, coords.y, 20);
+      let targetGroupId = currentWallSequenceGroupId;
       if (!drawingWallStart) {
-        setDrawingWallStart(snapped);
+        setDrawingWallStart({ x: snapResult.x, y: snapResult.y });
+        targetGroupId = 'group_wall_seq_' + Date.now();
+        setCurrentWallSequenceGroupId(targetGroupId);
       } else {
-        let endX = snapped.x;
-        let endY = snapped.y;
+        let endX = snapResult.snapped ? snapResult.x : snapped.x;
+        let endY = snapResult.snapped ? snapResult.y : snapped.y;
 
-        if (e.shiftKey) {
+        if (e.shiftKey && !snapResult.snapped) {
           const dx = endX - drawingWallStart.x;
           const dy = endY - drawingWallStart.y;
           if (Math.abs(dx) > Math.abs(dy)) {
@@ -1564,7 +2142,8 @@ export default function App({ user, onLogout }: AppProps) {
             x2: endX,
             y2: endY,
             thickness: 15,
-            curve: 0
+            curve: 0,
+            groupId: targetGroupId || undefined
           };
 
           updateCurrentLayout({
@@ -1572,6 +2151,7 @@ export default function App({ user, onLogout }: AppProps) {
             walls: [...currentLayout.walls, newWall]
           });
           setDrawingWallStart({ x: endX, y: endY });
+          setWallLengthInput('');
         }
       }
       return;
@@ -1963,6 +2543,13 @@ export default function App({ user, onLogout }: AppProps) {
             <circle cx={-w/2} cy={0} r={4} fill="#6366f1" />
           </>
         );
+      case 'opening':
+        return (
+          <>
+            <line x1={-w/2} y1={-d/2} x2={w/2} y2={-d/2} stroke={strokeSecondary} strokeWidth={1.5} strokeDasharray="3,3" />
+            <line x1={-w/2} y1={d/2} x2={w/2} y2={d/2} stroke={strokeSecondary} strokeWidth={1.5} strokeDasharray="3,3" />
+          </>
+        );
       case 'window':
         return (
           <>
@@ -2173,6 +2760,13 @@ export default function App({ user, onLogout }: AppProps) {
               <circle cx={-w/2} cy={0} r={4} fill="#6366f1" />
             </>
           );
+        case 'opening':
+          return (
+            <>
+              <line x1={-w/2} y1={-d/2} x2={w/2} y2={-d/2} stroke={strokeSecondary} strokeWidth={1.5} strokeDasharray="3,3" />
+              <line x1={-w/2} y1={d/2} x2={w/2} y2={d/2} stroke={strokeSecondary} strokeWidth={1.5} strokeDasharray="3,3" />
+            </>
+          );
         case 'window':
           return (
             <>
@@ -2331,10 +2925,10 @@ export default function App({ user, onLogout }: AppProps) {
                       y={-item.depth / 2}
                       width={item.width}
                       height={item.depth}
-                      rx={4}
-                      fill={item.color || '#cbd5e1'}
-                      fillOpacity={0.35}
-                      stroke={item.color || '#475569'}
+                      rx={item.icon === 'opening' ? 0 : 4}
+                      fill={item.icon === 'opening' || item.type === 'door' || item.type === 'window' ? '#ffffff' : (item.color || '#cbd5e1')}
+                      fillOpacity={item.icon === 'opening' || item.type === 'door' || item.type === 'window' ? 1.0 : 0.35}
+                      stroke={item.icon === 'opening' ? 'none' : (item.color || '#475569')}
                     />
                     {renderPrintFurnitureGraphic(item)}
                   </g>
@@ -2375,39 +2969,45 @@ export default function App({ user, onLogout }: AppProps) {
         targetFloors.forEach(floor => {
           pages.push({
             title: `Pavimento: ${floor.name}`,
-            layouts: [
-              { subtitle: 'Layout Atual (Antes)', layout: floor.before },
-              { subtitle: 'Layout Proposto (Depois)', layout: floor.after }
-            ]
+            layouts: (floor.layouts || []).map(l => ({ subtitle: l.name, layout: l.state }))
           });
         });
       } else {
         targetFloors.forEach(floor => {
-          pages.push({
-            title: `Pavimento: ${floor.name} - Layout Atual (Antes)`,
-            layouts: [{ subtitle: 'Antes', layout: floor.before }]
-          });
-        });
-        targetFloors.forEach(floor => {
-          pages.push({
-            title: `Pavimento: ${floor.name} - Layout Proposto (Depois)`,
-            layouts: [{ subtitle: 'Depois', layout: floor.after }]
+          (floor.layouts || []).forEach(l => {
+            pages.push({
+              title: `Pavimento: ${floor.name} - ${l.name}`,
+              layouts: [{ subtitle: l.name, layout: l.state }]
+            });
           });
         });
       }
     } else if (printLayoutsOption === 'before') {
       targetFloors.forEach(floor => {
-        pages.push({
-          title: `Pavimento: ${floor.name} - Layout Atual (Antes)`,
-          layouts: [{ subtitle: 'Antes', layout: floor.before }]
-        });
+        const firstLayout = floor.layouts?.[0];
+        if (firstLayout) {
+          pages.push({
+            title: `Pavimento: ${floor.name} - ${firstLayout.name}`,
+            layouts: [{ subtitle: firstLayout.name, layout: firstLayout.state }]
+          });
+        }
       });
     } else {
       targetFloors.forEach(floor => {
-        pages.push({
-          title: `Pavimento: ${floor.name} - Layout Proposto (Depois)`,
-          layouts: [{ subtitle: 'Depois', layout: floor.after }]
-        });
+        const subsequentLayouts = (floor.layouts || []).slice(1);
+        if (subsequentLayouts.length > 0) {
+          subsequentLayouts.forEach(l => {
+            pages.push({
+              title: `Pavimento: ${floor.name} - ${l.name}`,
+              layouts: [{ subtitle: l.name, layout: l.state }]
+            });
+          });
+        } else if (floor.layouts?.[0]) {
+          pages.push({
+            title: `Pavimento: ${floor.name} - ${floor.layouts[0].name}`,
+            layouts: [{ subtitle: floor.layouts[0].name, layout: floor.layouts[0].state }]
+          });
+        }
       });
     }
 
@@ -2433,47 +3033,168 @@ export default function App({ user, onLogout }: AppProps) {
   const renderSvgContent = (layoutToShow: LayoutState, svgRefInstance: React.MutableRefObject<SVGSVGElement | null>, readOnly: boolean = false) => {
     // 1. Drawing Wall Preview
     let previewWall: React.ReactNode = null;
-    if (!readOnly && tool === 'wall' && drawingWallStart) {
-      let previewX = snapValue(mousePos.x);
-      let previewY = snapValue(mousePos.y);
-      
-      if (mousePos.x !== 0 && mousePos.y !== 0) {
-        // Shift constrained snapping
-        // Checked in window key event listener or mouse down
-      }
+    if (!readOnly && tool === 'wall') {
+      const snapResult = getSnappedWallEndpoint(mousePos.x, mousePos.y, 20);
+      const hoveredSnapIndicator = snapResult.snapped ? (
+        <circle
+          cx={snapResult.x}
+          cy={snapResult.y}
+          r={10}
+          fill="none"
+          stroke="#10b981"
+          strokeWidth={2.5}
+          strokeDasharray="3,3"
+          opacity={0.9}
+          style={{ pointerEvents: 'none' }}
+        />
+      ) : null;
 
-      const distanceM = (getDistance(drawingWallStart.x, drawingWallStart.y, previewX, previewY) / 100).toFixed(2);
-      const mx = (drawingWallStart.x + previewX) / 2;
-      const my = (drawingWallStart.y + previewY) / 2;
-      
-      previewWall = (
-        <g>
-          <line
-            x1={drawingWallStart.x}
-            y1={drawingWallStart.y}
-            x2={previewX}
-            y2={previewY}
-            stroke="var(--color-primary)"
-            strokeWidth={15}
-            strokeDasharray="4,4"
-            opacity={0.6}
-            strokeLinecap="round"
-          />
-          <circle cx={drawingWallStart.x} cy={drawingWallStart.y} r={6} fill="var(--color-primary)" />
-          <circle cx={previewX} cy={previewY} r={6} fill="var(--color-primary)" />
-          <text x={mx} y={my - 18} className="wall-cota-text" fill="var(--color-primary)" fontSize={12} fontWeight={600} textAnchor="middle">
-            {distanceM} m
-          </text>
-        </g>
-      );
+      if (drawingWallStart) {
+        let previewX = snapResult.snapped ? snapResult.x : snapValue(mousePos.x);
+        let previewY = snapResult.snapped ? snapResult.y : snapValue(mousePos.y);
+
+        const distanceM = (getDistance(drawingWallStart.x, drawingWallStart.y, previewX, previewY) / 100).toFixed(2);
+        const mx = (drawingWallStart.x + previewX) / 2;
+        const my = (drawingWallStart.y + previewY) / 2;
+
+        previewWall = (
+          <g>
+            <line
+              x1={drawingWallStart.x}
+              y1={drawingWallStart.y}
+              x2={previewX}
+              y2={previewY}
+              stroke="var(--color-primary)"
+              strokeWidth={15}
+              strokeDasharray="4,4"
+              opacity={0.6}
+              strokeLinecap="round"
+            />
+            <circle cx={drawingWallStart.x} cy={drawingWallStart.y} r={6} fill="var(--color-primary)" />
+            <circle cx={previewX} cy={previewY} r={6} fill="var(--color-primary)" />
+            <text x={mx} y={my - 18} className="wall-cota-text" fill="var(--color-primary)" fontSize={12} fontWeight={600} textAnchor="middle">
+              {distanceM} m
+            </text>
+            {hoveredSnapIndicator}
+          </g>
+        );
+      } else {
+        previewWall = hoveredSnapIndicator;
+      }
+    }
+
+    let pastePreview: React.ReactNode = null;
+    if (!readOnly && isPastingMode && (clipboard.items.length > 0 || clipboard.walls.length > 0)) {
+      const xs: number[] = [];
+      const ys: number[] = [];
+      clipboard.items.forEach(item => {
+        xs.push(item.x - item.width/2, item.x + item.width/2);
+        ys.push(item.y - item.depth/2, item.y + item.depth/2);
+      });
+      clipboard.walls.forEach(w => {
+        xs.push(w.x1, w.x2);
+        ys.push(w.y1, w.y2);
+      });
+      if (xs.length > 0 && ys.length > 0) {
+        const minX = Math.min(...xs);
+        const maxX = Math.max(...xs);
+        const minY = Math.min(...ys);
+        const maxY = Math.max(...ys);
+        const centerX = (minX + maxX) / 2;
+        const centerY = (minY + maxY) / 2;
+
+        const targetX = snapValue(mousePos.x);
+        const targetY = snapValue(mousePos.y);
+        const deltaX = targetX - centerX;
+        const deltaY = targetY - centerY;
+
+        const strokePrimary = theme === 'light' ? '#334155' : '#94a3b8';
+        const strokeSecondary = '#64748b';
+
+        pastePreview = (
+          <g opacity={0.5} style={{ pointerEvents: 'none' }}>
+            {/* Render preview walls */}
+            {clipboard.walls.map((wall, idx) => {
+              const { ctrlX, ctrlY } = getWallBezierParams(wall);
+              const px1 = wall.x1 + deltaX;
+              const py1 = wall.y1 + deltaY;
+              const px2 = wall.x2 + deltaX;
+              const py2 = wall.y2 + deltaY;
+              const pCtrlX = ctrlX + deltaX;
+              const pCtrlY = ctrlY + deltaY;
+              const pathData = wall.curve && wall.curve !== 0
+                ? `M ${px1} ${py1} Q ${pCtrlX} ${pCtrlY} ${px2} ${py2}`
+                : `M ${px1} ${py1} L ${px2} ${py2}`;
+              return (
+                <path
+                  key={`pw-${idx}`}
+                  d={pathData}
+                  fill="none"
+                  stroke="var(--color-primary)"
+                  strokeWidth={wall.thickness}
+                  strokeLinecap="round"
+                />
+              );
+            })}
+            {/* Render preview items */}
+            {clipboard.items.map((item, idx) => {
+              const ix = item.x + deltaX;
+              const iy = item.y + deltaY;
+              const scaleX = item.flipX ? -1 : 1;
+              const scaleY = item.flipY ? -1 : 1;
+              const transform = `translate(${ix}, ${iy}) rotate(${item.rotation})`;
+              const isText = item.type === 'text';
+
+              return (
+                <g key={`pi-${idx}`} transform={transform}>
+                  {isText ? (
+                    <text
+                      x={0}
+                      y={0}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      fill="var(--color-primary)"
+                      fontSize={item.fontSize || 16}
+                      fontWeight="600"
+                    >
+                      {item.name}
+                    </text>
+                  ) : (
+                    <g transform={`scale(${scaleX}, ${scaleY})`}>
+                      <rect
+                        x={-item.width / 2}
+                        y={-item.depth / 2}
+                        width={item.width}
+                        height={item.depth}
+                        rx={item.icon === 'opening' ? 0 : 4}
+                        fill="none"
+                        stroke="var(--color-primary)"
+                        strokeWidth={2}
+                      />
+                      {renderFurnitureGraphic(item)}
+                    </g>
+                  )}
+                </g>
+              );
+            })}
+            {/* Help tooltip */}
+            <g transform={`translate(${targetX}, ${targetY + 40})`}>
+              <rect x={-115} y={-12} width={230} height={24} rx={4} fill="#0f172a" opacity={0.8} />
+              <text textAnchor="middle" fill="#ffffff" fontSize={10} fontWeight={600} dominantBaseline="middle">
+                Clique para colar (Esc/Botão Direito para cancelar)
+              </text>
+            </g>
+          </g>
+        );
+      }
     }
 
     return (
       <svg
         ref={svgRefInstance}
-        className={`canvas-svg ${!readOnly && tool === 'wall' ? 'tool-wall' : ''} ${!readOnly && tool === 'pan' ? (isPanning ? 'tool-pan-grabbing' : 'tool-pan') : ''}`}
-        onMouseDown={(e) => !readOnly && handleMouseDown(e, svgRefInstance.current)}
-        onMouseMove={(e) => !readOnly && handleMouseMove(e, svgRefInstance.current)}
+        className={`canvas-svg ${!readOnly && tool === 'wall' ? 'tool-wall' : ''} ${tool === 'pan' ? (isPanning ? 'tool-pan-grabbing' : 'tool-pan') : ''}`}
+        onMouseDown={(e) => (!readOnly || tool === 'pan') && handleMouseDown(e, svgRefInstance.current)}
+        onMouseMove={(e) => (!readOnly || tool === 'pan') && handleMouseMove(e, svgRefInstance.current)}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
         onWheel={handleWheel}
@@ -2663,6 +3384,19 @@ export default function App({ user, onLogout }: AppProps) {
           })}
 
           {previewWall}
+          {pastePreview}
+          
+          {tool === 'wall' && drawingWallStart && wallLengthInput && (
+            <g transform={`translate(${mousePos.x}, ${mousePos.y - 45})`} style={{ pointerEvents: 'none' }}>
+              <rect x={-80} y={-18} width={160} height={36} rx={4} fill="#0f172a" stroke="var(--color-primary)" strokeWidth={1.5} opacity={0.9} />
+              <text x={0} y={-4} textAnchor="middle" fill="#ffffff" fontSize={11} fontWeight={600} dominantBaseline="middle">
+                Comprimento: {wallLengthInput} m
+              </text>
+              <text x={0} y={10} textAnchor="middle" fill="#94a3b8" fontSize={8} dominantBaseline="middle">
+                Pressione Enter para confirmar
+              </text>
+            </g>
+          )}
 
           {/* RENDERING CANVAS ITEMS */}
           {layoutToShow.items.map(item => {
@@ -2747,6 +3481,15 @@ export default function App({ user, onLogout }: AppProps) {
                 {/* Visual rendering for Text Annotations */}
                 {isText ? (
                   <>
+                    {/* Always render a transparent rect for click and drag interaction */}
+                    <rect
+                      x={-item.width / 2}
+                      y={-item.depth / 2}
+                      width={item.width}
+                      height={item.depth}
+                      fill="transparent"
+                      cursor="move"
+                    />
                     {/* Outline box visible only when selected to make dragging easy */}
                     {isSelected && (
                       <rect
@@ -2758,6 +3501,7 @@ export default function App({ user, onLogout }: AppProps) {
                         stroke="var(--color-primary)"
                         strokeWidth={1}
                         strokeDasharray="3,3"
+                        style={{ pointerEvents: 'none' }}
                       />
                     )}
                     <text
@@ -2788,10 +3532,10 @@ export default function App({ user, onLogout }: AppProps) {
                         y={-item.depth / 2}
                         width={item.width}
                         height={item.depth}
-                        rx={4}
-                        fill={item.color || (theme === 'light' ? '#cbd5e1' : '#334155')}
-                        fillOpacity={theme === 'light' ? 0.35 : 0.15}
-                        stroke={item.color || (theme === 'light' ? '#475569' : '#94a3b8')}
+                        rx={item.icon === 'opening' ? 0 : 4}
+                        fill={item.icon === 'opening' || item.type === 'door' || item.type === 'window' ? 'var(--color-blueprint-bg)' : (item.color || (theme === 'light' ? '#cbd5e1' : '#334155'))}
+                        fillOpacity={item.icon === 'opening' || item.type === 'door' || item.type === 'window' ? 1.0 : (theme === 'light' ? 0.35 : 0.15)}
+                        stroke={item.icon === 'opening' ? 'none' : (item.color || (theme === 'light' ? '#475569' : '#94a3b8'))}
                         className="canvas-item-rect"
                       />
 
@@ -2947,54 +3691,92 @@ export default function App({ user, onLogout }: AppProps) {
                 </option>
               ))}
             </select>
-            {project.floors.length > 1 && (
+            <div style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
               <button
+                type="button"
                 className="btn btn-secondary"
-                onClick={() => handleDeleteFloor(currentFloorId)}
-                title="Excluir pavimento ativo"
-                style={{ padding: '0.35rem 0.55rem', height: '32px', color: 'var(--color-danger)', borderColor: 'rgba(239,68,68,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                onClick={handlePromptAddFloor}
+                title="Adicionar novo pavimento/andar"
+                style={{ padding: '0.2rem 0.4rem', height: '32px', width: '32px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               >
-                🗑
+                <Plus size={14} />
               </button>
-            )}
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={handlePromptAddFloor}
-              title="Adicionar novo pavimento/andar"
-              style={{ padding: '0.35rem 0.6rem', height: '32px', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
-            >
-              <Plus size={13} />
-              Novo
-            </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={handleRenameCurrentFloor}
+                title="Renomear pavimento ativo"
+                style={{ padding: '0.2rem 0.4rem', height: '32px', width: '32px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                ✏️
+              </button>
+              {project.floors.length > 1 && (
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={() => handleDeleteFloor(currentFloorId)}
+                  title="Excluir pavimento ativo"
+                  style={{ padding: '0.2rem 0.4rem', height: '32px', width: '32px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  🗑️
+                </button>
+              )}
+            </div>
           </div>
 
           <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--border-color)' }} />
 
-          {/* Layout version selector tabs */}
-          <div className="version-selector">
-            <button
-              className={`version-btn ${currentVersion === 'before' ? 'active before' : ''}`}
-              onClick={() => {
-                setCurrentVersion('before');
+          {/* Layout version selector dropdown */}
+          <div className="version-selector" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600' }}>Layout:</span>
+            <select
+              value={currentLayoutId}
+              onChange={(e) => {
+                setCurrentLayoutId(e.target.value);
                 setSelectedItemId(null);
                 setSelectedWallId(null);
               }}
+              className="input-styled"
+              style={{ fontSize: '0.8rem', padding: '0.25rem 0.5rem', width: '160px', cursor: 'pointer', height: '32px', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', background: '#1e293b', color: '#f1f5f9' }}
             >
-              <span className="version-badge before"></span>
-              Layout Atual (Antes)
-            </button>
-            <button
-              className={`version-btn ${currentVersion === 'after' ? 'active after' : ''}`}
-              onClick={() => {
-                setCurrentVersion('after');
-                setSelectedItemId(null);
-                setSelectedWallId(null);
-              }}
-            >
-              <span className="version-badge after"></span>
-              Layout Proposto (Depois)
-            </button>
+              {(currentFloor.layouts || []).map(layout => (
+                <option key={layout.id} value={layout.id}>
+                  {layout.name}
+                </option>
+              ))}
+            </select>
+            
+            <div style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={handleAddNewLayout}
+                title="Adicionar novo layout/proposta"
+                style={{ padding: '0.2rem 0.4rem', height: '32px', width: '32px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Plus size={14} />
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={handleRenameCurrentLayout}
+                title="Renomear layout atual"
+                style={{ padding: '0.2rem 0.4rem', height: '32px', width: '32px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                ✏️
+              </button>
+              {(currentFloor.layouts || []).length > 1 && (
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={handleDeleteCurrentLayout}
+                  title="Excluir layout atual"
+                  style={{ padding: '0.2rem 0.4rem', height: '32px', width: '32px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  🗑️
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -3086,6 +3868,21 @@ export default function App({ user, onLogout }: AppProps) {
                     <SaveAll size={14} />
                     Salvar como…
                   </button>
+
+                  {projectId && (
+                    <button
+                      className="btn"
+                      style={{ justifyContent: 'flex-start', padding: '0.45rem 0.75rem', width: '100%', border: 'none', background: 'none' }}
+                      onClick={() => {
+                        setIsArquivoMenuOpen(false);
+                        setShareEmailInput('');
+                        setIsShareModalOpen(true);
+                      }}
+                    >
+                      <Share2 size={14} />
+                      Compartilhar
+                    </button>
+                  )}
 
                   <div style={{ height: '1px', backgroundColor: 'rgba(255,255,255,0.06)', margin: '0.25rem 0' }} />
 
@@ -3223,25 +4020,16 @@ export default function App({ user, onLogout }: AppProps) {
           <div className="sidebar-content">
             {/* Version syncing utilities */}
             <div className="panel-section" style={{ backgroundColor: 'rgba(99, 102, 241, 0.05)', padding: '0.85rem', borderRadius: 'var(--radius-md)', border: '1px solid rgba(99, 102, 241, 0.15)' }}>
-              <span className="section-title" style={{ color: 'var(--color-primary)' }}>Sincronizar Antes/Depois</span>
+              <span className="section-title" style={{ color: 'var(--color-primary)' }}>Sincronizar Layouts</span>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.2rem' }}>
                 <button
                   className="btn btn-primary"
-                  onClick={copyBeforeToAfter}
-                  style={{ padding: '0.4rem 0.5rem', fontSize: '0.75rem', width: '100%', gap: '0.25rem' }}
-                  title="Clona o estado do 'Antes' para o 'Depois' no pavimento ativo"
+                  onClick={handleSyncLayouts}
+                  style={{ padding: '0.4rem 0.5rem', fontSize: '0.75rem', width: '100%', gap: '0.25rem', justifyContent: 'center' }}
+                  title="Abre o sincronizador de cópias entre layouts deste pavimento"
                 >
                   <Copy size={12} />
-                  Copiar Antes → Depois
-                </button>
-                <button
-                  className="btn btn-secondary"
-                  onClick={copyAfterToBefore}
-                  style={{ padding: '0.4rem 0.5rem', fontSize: '0.75rem', width: '100%', gap: '0.25rem' }}
-                  title="Clona o estado do 'Depois' para o 'Antes' no pavimento ativo"
-                >
-                  <Copy size={12} />
-                  Copiar Depois → Antes
+                  Sincronizar Layouts
                 </button>
               </div>
             </div>
@@ -3525,7 +4313,7 @@ export default function App({ user, onLogout }: AppProps) {
               <button
                 className="btn-tool"
                 onClick={handlePasteItems}
-                disabled={clipboard.length === 0}
+                disabled={clipboard.items.length === 0 && clipboard.walls.length === 0}
                 title="Colar seleção (Ctrl+V / ⌘V)"
               >
                 <Clipboard size={18} />
@@ -3591,19 +4379,51 @@ export default function App({ user, onLogout }: AppProps) {
           {/* Canvas display wrapper */}
           {isSplitView ? (
             <div className="split-view-container">
-              {/* Left pane: BEFORE version */}
+              {/* Left pane: Selected Left Layout */}
               <div className="split-pane">
-                <div className="pane-label-overlay before">Layout Atual (Antes) - {currentFloor.name}</div>
+                <div className="pane-label-overlay before" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <span>Comparar:</span>
+                  <select
+                    value={leftSplitLayoutId}
+                    onChange={(e) => setLeftSplitLayoutId(e.target.value)}
+                    style={{ background: 'var(--bg-card)', color: 'var(--text-color)', border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: '0.75rem', padding: '0.1rem 0.3rem' }}
+                  >
+                    {(currentFloor.layouts || []).map(l => (
+                      <option key={l.id} value={l.id}>{l.name}</option>
+                    ))}
+                  </select>
+                  <span>- {currentFloor.name}</span>
+                </div>
                 <div className="canvas-viewport">
-                  {renderSvgContent(currentFloor.before, svgRef1, true)}
+                  {renderSvgContent(
+                    currentFloor.layouts?.find(l => l.id === leftSplitLayoutId)?.state || currentFloor.layouts?.[0]?.state || { walls: [], items: [] },
+                    svgRef1,
+                    true
+                  )}
                 </div>
               </div>
               
-              {/* Right pane: AFTER version */}
+              {/* Right pane: Selected Right Layout */}
               <div className="split-pane">
-                <div className="pane-label-overlay after">Layout Proposto (Depois) - {currentFloor.name}</div>
+                <div className="pane-label-overlay after" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <span>Comparar:</span>
+                  <select
+                    value={rightSplitLayoutId}
+                    onChange={(e) => setRightSplitLayoutId(e.target.value)}
+                    style={{ background: 'var(--bg-card)', color: 'var(--text-color)', border: '1px solid var(--border-color)', borderRadius: '4px', fontSize: '0.75rem', padding: '0.1rem 0.3rem' }}
+                  >
+                    {(currentFloor.layouts || []).map(l => (
+                      <option key={l.id} value={l.id}>{l.name}</option>
+                    ))}
+                  </select>
+                  <span>- {currentFloor.name}</span>
+                </div>
                 <div className="canvas-viewport">
-                  {renderSvgContent(currentFloor.after, svgRef2, false)}
+                  {renderSvgContent(
+                    currentFloor.layouts?.find(l => l.id === rightSplitLayoutId)?.state || currentFloor.layouts?.[1]?.state || currentFloor.layouts?.[0]?.state || { walls: [], items: [] },
+                    svgRef2,
+                    false
+                  )}
                 </div>
               </div>
             </div>
@@ -4049,7 +4869,7 @@ export default function App({ user, onLogout }: AppProps) {
                     <Scissors size={14} />
                     Recortar
                   </button>
-                  {clipboard.length > 0 && (
+                  {(clipboard.items.length > 0 || clipboard.walls.length > 0) && (
                     <button
                       type="button"
                       className="btn btn-secondary"
@@ -4303,19 +5123,31 @@ export default function App({ user, onLogout }: AppProps) {
                   Selecione um móvel, anotação de texto ou segmento de parede no canvas para alterar suas propriedades.
                 </p>
                 
-                {clipboard.length > 0 && (
+                {(clipboard.items.length > 0 || clipboard.walls.length > 0) && (
                   <div style={{ width: '100%', marginTop: '1.25rem', borderTop: '1px dashed var(--border-color)', paddingTop: '1.25rem' }}>
                     <span className="section-title" style={{ color: 'var(--color-primary)', display: 'block', marginBottom: '0.5rem' }}>Área de Transferência</span>
-                    <button
-                      type="button"
-                      className="btn btn-primary"
-                      onClick={handlePasteItems}
-                      style={{ width: '100%', fontSize: '0.75rem', justifyContent: 'center', gap: '0.4rem' }}
-                      title="Colar itens copiados neste pavimento (Ctrl+V / ⌘V)"
-                    >
-                      <Clipboard size={14} />
-                      Colar {clipboard.length} item(ns)
-                    </button>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={handlePasteItems}
+                        style={{ width: '100%', fontSize: '0.75rem', justifyContent: 'center', gap: '0.4rem' }}
+                        title="Colar itens copiados neste pavimento (Ctrl+V / ⌘V)"
+                      >
+                        <Clipboard size={14} />
+                        Colar {clipboard.items.length + clipboard.walls.length} item(ns)
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={() => setClipboard({ items: [], walls: [] })}
+                        style={{ width: '100%', fontSize: '0.75rem', justifyContent: 'center', gap: '0.4rem' }}
+                        title="Limpar Área de Transferência"
+                      >
+                        <Trash2 size={14} />
+                        Limpar Área de Transferência
+                      </button>
+                    </div>
                   </div>
                 )}
                 
@@ -4397,6 +5229,324 @@ export default function App({ user, onLogout }: AppProps) {
                 onClick={handleAddFloorConfirmed}
               >
                 Adicionar Pavimento
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Share Project Modal */}
+      {isShareModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsShareModalOpen(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">Compartilhar Projeto</span>
+              <button
+                type="button"
+                className="floor-tab-delete"
+                onClick={() => setIsShareModalOpen(false)}
+                style={{ fontSize: '1.25rem' }}
+              >
+                ×
+              </button>
+            </div>
+            <div className="modal-body">
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                Insira o e-mail da pessoa para quem deseja enviar o projeto. O sistema gerará uma cópia independente deste projeto na conta dela. Alterações feitas na cópia não afetarão o seu projeto original.
+              </p>
+              <div className="form-group">
+                <label>E-mail do Destinatário</label>
+                <input
+                  type="email"
+                  value={shareEmailInput}
+                  onChange={(e) => setShareEmailInput(e.target.value)}
+                  className="input-styled"
+                  placeholder="ex: usuario@email.com"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleShareProjectConfirmed();
+                    }
+                  }}
+                />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="btn"
+                onClick={() => setIsShareModalOpen(false)}
+                disabled={isSharingLoading}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="btn btn-success"
+                onClick={handleShareProjectConfirmed}
+                disabled={isSharingLoading}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+              >
+                {isSharingLoading ? 'Compartilhando...' : 'Compartilhar Cópia'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Add New Layout Modal */}
+      {isAddNewLayoutModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsAddNewLayoutModalOpen(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">Criar Novo Layout</span>
+              <button
+                type="button"
+                className="floor-tab-delete"
+                onClick={() => setIsAddNewLayoutModalOpen(false)}
+                style={{ fontSize: '1.25rem' }}
+              >
+                ×
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="form-group">
+                <label>Nome do Layout</label>
+                <input
+                  type="text"
+                  value={newLayoutNameInput}
+                  onChange={(e) => setNewLayoutNameInput(e.target.value)}
+                  className="input-styled"
+                  placeholder="ex: Proposta 3"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleAddNewLayoutConfirmed();
+                    }
+                  }}
+                />
+              </div>
+              
+              <div className="form-group" style={{ marginTop: '1rem' }}>
+                <label>Copiar Conteúdo de Layout Existente</label>
+                <select
+                  value={newLayoutCopyFromInput}
+                  onChange={(e) => setNewLayoutCopyFromInput(e.target.value)}
+                  className="input-styled"
+                  style={{ width: '100%' }}
+                >
+                  <option value="none">Começar em branco (Layout vazio)</option>
+                  {(currentFloor.layouts || []).map(l => (
+                    <option key={l.id} value={l.id}>Copiar de: {l.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="btn"
+                onClick={() => setIsAddNewLayoutModalOpen(false)}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleAddNewLayoutConfirmed}
+              >
+                Criar Layout
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sincronizar Layouts Modal */}
+      {isSyncLayoutsModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsSyncLayoutsModalOpen(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">Sincronizar Layouts</span>
+              <button
+                type="button"
+                className="floor-tab-delete"
+                onClick={() => setIsSyncLayoutsModalOpen(false)}
+                style={{ fontSize: '1.25rem' }}
+              >
+                ×
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.25rem' }}>Copiar De (Origem)</label>
+                <select
+                  value={syncSourceLayoutId}
+                  onChange={(e) => {
+                    const srcId = e.target.value;
+                    setSyncSourceLayoutId(srcId);
+                    setSyncTargetLayoutIds(prev => prev.filter(id => id !== srcId));
+                  }}
+                  className="input-styled"
+                  style={{ width: '100%' }}
+                >
+                  {(currentFloor.layouts || []).map(l => (
+                    <option key={l.id} value={l.id}>{l.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem' }}>Copiar Para (Destino)</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: '160px', overflowY: 'auto', padding: '0.5rem', background: '#111827', border: '1px solid var(--border-color)', borderRadius: '4px' }}>
+                  {(currentFloor.layouts || [])
+                    .filter(l => l.id !== syncSourceLayoutId)
+                    .map(l => {
+                      const isChecked = syncTargetLayoutIds.includes(l.id);
+                      return (
+                        <label key={l.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.8rem', color: '#f1f5f9' }}>
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => {
+                              if (isChecked) {
+                                setSyncTargetLayoutIds(prev => prev.filter(id => id !== l.id));
+                              } else {
+                                setSyncTargetLayoutIds(prev => [...prev, l.id]);
+                              }
+                            }}
+                            style={{ accentColor: 'var(--color-primary)' }}
+                          />
+                          {l.name} {(l.state.walls.length > 0 || l.state.items.length > 0) && <span style={{ color: 'var(--color-warning)', fontSize: '0.65rem' }}>(Contém conteúdo)</span>}
+                        </label>
+                      );
+                    })}
+                  {(currentFloor.layouts || []).filter(l => l.id !== syncSourceLayoutId).length === 0 && (
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Nenhum outro layout disponível.</span>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="btn"
+                onClick={() => setIsSyncLayoutsModalOpen(false)}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleSyncLayoutsConfirmed}
+                disabled={syncTargetLayoutIds.length === 0}
+              >
+                Sincronizar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rename Layout Modal */}
+      {isRenameLayoutModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsRenameLayoutModalOpen(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">Renomear Layout</span>
+              <button
+                type="button"
+                className="floor-tab-delete"
+                onClick={() => setIsRenameLayoutModalOpen(false)}
+                style={{ fontSize: '1.25rem' }}
+              >
+                ×
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="form-group">
+                <label>Novo Nome do Layout</label>
+                <input
+                  type="text"
+                  value={renameLayoutNameInput}
+                  onChange={(e) => setRenameLayoutNameInput(e.target.value)}
+                  className="input-styled"
+                  placeholder="ex: Proposta Especial"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleRenameCurrentLayoutConfirmed();
+                    }
+                  }}
+                />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="btn"
+                onClick={() => setIsRenameLayoutModalOpen(false)}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleRenameCurrentLayoutConfirmed}
+              >
+                Salvar Nome
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rename Floor Modal */}
+      {isRenameFloorModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsRenameFloorModalOpen(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">Renomear Pavimento / Andar</span>
+              <button
+                type="button"
+                className="floor-tab-delete"
+                onClick={() => setIsRenameFloorModalOpen(false)}
+                style={{ fontSize: '1.25rem' }}
+              >
+                ×
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="form-group">
+                <label>Novo Nome do Pavimento</label>
+                <input
+                  type="text"
+                  value={renameFloorNameInput}
+                  onChange={(e) => setRenameFloorNameInput(e.target.value)}
+                  className="input-styled"
+                  placeholder="ex: 2º Pavimento"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleRenameCurrentFloorConfirmed();
+                    }
+                  }}
+                />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="btn"
+                onClick={() => setIsRenameFloorModalOpen(false)}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleRenameCurrentFloorConfirmed}
+              >
+                Salvar Nome
               </button>
             </div>
           </div>
@@ -4784,12 +5934,12 @@ export default function App({ user, onLogout }: AppProps) {
 
       {/* Off-screen Print Container */}
       <div className="print-layout-container">
-        <div className="print-header-brand">
-          <h2>{project.name}</h2>
-          <span>Estúdio de Layout de Planta Baixa</span>
-        </div>
         {getPrintPages().map((page, pageIdx) => (
           <div key={pageIdx} className="print-page-break">
+            <div className="print-header-brand">
+              <h2>{project.name}</h2>
+              <span>Estúdio de Layout de Planta Baixa</span>
+            </div>
             <h3 className="print-page-title">{page.title}</h3>
             <div className="print-layouts-wrapper">
               {page.layouts.map((l, lIdx) => (
