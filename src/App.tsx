@@ -875,44 +875,7 @@ export default function App({ user, onLogout }: AppProps) {
     }
   };
 
-  // --- VERSION ACTIONS ---
-  const copyBeforeToAfter = () => {
-    setConfirmActionModal({
-      title: "Copiar Layout (Antes → Depois)",
-      message: "Isso irá substituir completamente o layout 'Depois' pelo layout 'Antes' neste pavimento. Todos os móveis e anotações do 'Depois' serão substituídos. Continuar?",
-      onConfirm: () => {
-        const updatedFloors = project.floors.map(floor => {
-          if (floor.id === currentFloorId) {
-            return {
-              ...floor,
-              after: JSON.parse(JSON.stringify(floor.before))
-            };
-          }
-          return floor;
-        });
-        commitProjectChange({ ...project, floors: updatedFloors });
-      }
-    });
-  };
 
-  const copyAfterToBefore = () => {
-    setConfirmActionModal({
-      title: "Copiar Layout (Depois → Antes)",
-      message: "Isso irá substituir completamente o layout 'Antes' pelo layout 'Depois' neste pavimento. Todos os móveis e anotações do 'Antes' serão substituídos. Continuar?",
-      onConfirm: () => {
-        const updatedFloors = project.floors.map(floor => {
-          if (floor.id === currentFloorId) {
-            return {
-              ...floor,
-              before: JSON.parse(JSON.stringify(floor.after))
-            };
-          }
-          return floor;
-        });
-        commitProjectChange({ ...project, floors: updatedFloors });
-      }
-    });
-  };
 
   // --- FLOOR ACTIONS ---
   const handlePromptAddFloor = () => {
@@ -1799,7 +1762,14 @@ export default function App({ user, onLogout }: AppProps) {
         migrated = {
           name: loaded.name || 'Projeto',
           customPresets: [],
-          floors: [{ id: 'floor_1', name: 'Pavimento Térreo', before: (loaded as any).before || {walls:[],items:[]}, after: (loaded as any).after || {walls:[],items:[]} }]
+          floors: [{
+            id: 'floor_1',
+            name: 'Pavimento Térreo',
+            layouts: [
+              { id: 'before', name: 'Layout Atual (Antes)', state: (loaded as any).before || { walls: [], items: [] } },
+              { id: 'after', name: 'Layout Proposto (Depois)', state: (loaded as any).after || { walls: [], items: [] } }
+            ]
+          }]
         };
       } else {
         migrated = loaded;
@@ -1993,8 +1963,10 @@ export default function App({ user, onLogout }: AppProps) {
                   {
                     id: 'floor_1',
                     name: 'Pavimento Térreo',
-                    before: parsed.before || { walls: [], items: [] },
-                    after: parsed.after || { walls: [], items: [] }
+                    layouts: [
+                      { id: 'before', name: 'Layout Atual (Antes)', state: parsed.before || { walls: [], items: [] } },
+                      { id: 'after', name: 'Layout Proposto (Depois)', state: parsed.after || { walls: [], items: [] } }
+                    ]
                   }
                 ]
               };
@@ -3108,8 +3080,7 @@ export default function App({ user, onLogout }: AppProps) {
         const deltaX = targetX - centerX;
         const deltaY = targetY - centerY;
 
-        const strokePrimary = theme === 'light' ? '#334155' : '#94a3b8';
-        const strokeSecondary = '#64748b';
+        
 
         pastePreview = (
           <g opacity={0.5} style={{ pointerEvents: 'none' }}>
